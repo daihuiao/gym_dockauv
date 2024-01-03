@@ -469,7 +469,7 @@ class EpisodeAnimation:
         self.ax_path.path_art.set_data_3d(positions[:, 0], positions[:, 1], positions[:, 2])
 
         # Update head dot
-        self.ax_path.head_art.set_data_3d(positions[-1, 0], positions[-1, 1], positions[-1, 2])
+        self.ax_path.head_art.set_data_3d([positions[-1, 0]], [positions[-1, 1]], [positions[-1, 2]])
 
         # Update attitude arrows:
         self.ax_path.attitude_art.remove()

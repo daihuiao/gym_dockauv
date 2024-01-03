@@ -7,8 +7,10 @@ from ..utils import geomutils as geom
 from ..utils.lowpassfilter import LowPassFilter
 from ..utils.odesolver45 import odesolver45
 import time
+from python_vehicle_simulator.vehicles.remus100 import remus100
 
-class AUVSim(StateSpace, ABC):
+
+class AUVSim_remus(StateSpace, ABC):
     r"""
     This class serves as an interface base class for the AUV instance. It handles the input and output to deal with
     the state space equations, save the state of the vehicle and represent the state of the vehicle in the
@@ -37,7 +39,7 @@ class AUVSim(StateSpace, ABC):
         # These values should be overwritten by a config for a run scenario, default here
         self.state = np.hstack([np.zeros((6,)), np.zeros((6,))])
         self._state_dot = np.hstack([np.zeros((6,)), np.zeros((6,))])
-        self.lowpassfilter = LowPassFilter(T1=0.2, sample_time=1)
+        self.lowpassfilter = LowPassFilter(T1=0.2, sample_time=1)  # todo dai
         self.step_size = 1  # This would also automatically update lowpassfilter due to setter
         # TODO: Make step_size clear where to initiate and how
         self.safety_radius = 1
@@ -45,6 +47,7 @@ class AUVSim(StateSpace, ABC):
         # Standard initialization
         # Make B dependent implementation of input vector u:
         self._u = None
+        self.remus = remus100()
 
     def __setattr__(self, name, value):
         # Overwrite Setter, to automatically update low-pass filter too
@@ -59,10 +62,11 @@ class AUVSim(StateSpace, ABC):
         .. note:: u can be set to None, since if it is called again without new initialization, it sets itself to
             zero automatically
         """
-
+        self.remus.reset()
         self.state = np.hstack([np.zeros((6,)), np.zeros((6,))])
         self._state_dot = np.hstack([np.zeros((6,)), np.zeros((6,))])
         self.u = None
+        self.u_actual = np.array([0, 0, 0], float)  # actual inputs, defined by vehicle class
 
     def unnormalize_input(self, norm_input: np.ndarray) -> np.ndarray:
         """
@@ -83,7 +87,8 @@ class AUVSim(StateSpace, ABC):
         :return: None
         """
         # Un-normalize action input from outside and apply low-pass filter to changes
-        self.u = self.lowpassfilter.apply_lowpass(self.unnormalize_input(action), self.u)
+        # self.u = self.lowpassfilter.apply_lowpass(self.unnormalize_input(action), self.u)
+        self.u = self.unnormalize_input(action)
         self._sim(nu_c)
 
     def _sim(self, nu_c: np.ndarray) -> None:
@@ -94,24 +99,31 @@ class AUVSim(StateSpace, ABC):
         :param nu_c: water current speed vector
         :return: None
         """
-        # Perform ODE simulation step
-        # t = time.time()
-        self.state, q = odesolver45(f=self.state_dot, t=0, y=self.state, h=self.step_size, **{"nu_c": nu_c})
-        # print("ODE solver time: ", time.time() - t)
+        if False:
+            # Perform ODE simulation step
+            # t = time.time()
+            self.state1, q = odesolver45(f=self.state_dot, t=0, y=self.state, h=self.step_size, **{"nu_c": nu_c})
+            # print("ODE solver time: ", time.time() - t)
 
-        # Alternative with official python package - Note: There are a lot of ways to hack a constant step size,
-        # none of them are beautiful
-        # t = time.time()
-        # res = solve_ivp(fun=self.state_dot, t_span=[0, self.step_size],
-        #                 y0=self.state, t_eval=[self.step_size], method='RK45', args=(nu_c,))
-        # print("Scipy solver time: ", time.time() - t)
+            # Alternative with official python package - Note: There are a lot of ways to hack a constant step size,
+            # none of them are beautiful
+            # t = time.time()
+            # res = solve_ivp(fun=self.state_dot, t_span=[0, self.step_size],
+            #                 y0=self.state, t_eval=[self.step_size], method='RK45', args=(nu_c,))
+            # print("Scipy solver time: ", time.time() - t)
+            #
+            # self.state2 = res.y.flatten()
 
-        # self.state2 = res.y.flatten()
-
-        self.state = self.state1
-        # Convert angle in applicable range
-        self.state[3:6] = geom.ssa(self.state[3:6])
-        self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here
+            # Convert angle in applicable range
+            self.state[3:6] = geom.ssa(self.state[3:6]) # 将欧拉角限制在[-pi, pi]之间
+            self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here
+        else:
+            self.state, self.u_actual, self._state_dot = self.remus.remus_solver(self.u, eta=self.state[:6],
+                                                                                 nu=self.state[6:], nu_c=nu_c,
+                                                                                 u_actual=self.u_actual)
+            # Convert angle in applicable range
+            self.state[3:6] = geom.ssa(self.state[3:6]) # 将欧拉角限制在[-pi, pi]之间
+            # self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here
 
     def state_dot(self, t, state, nu_c: np.ndarray) -> np.ndarray:
         r"""

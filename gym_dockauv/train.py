@@ -9,10 +9,10 @@ from stable_baselines3 import A2C, PPO, DDPG, SAC
 from stable_baselines3.common import base_class
 from stable_baselines3.common.noise import NormalActionNoise
 
-from gym_dockauv.utils.datastorage import EpisodeDataStorage, FullDataStorage
-from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_DEFAULT
-from gym_dockauv.config.env_config import PREDICT_CONFIG, MANUAL_CONFIG, TRAIN_CONFIG, REGISTRATION_DICT
-from gym_dockauv.envs.docking3d import BaseDocking3d
+from .utils.datastorage import EpisodeDataStorage, FullDataStorage
+from .config.DRL_hyperparams import PPO_HYPER_PARAMS_DEFAULT
+from .config.env_config import PREDICT_CONFIG, MANUAL_CONFIG, TRAIN_CONFIG, REGISTRATION_DICT
+from .envs.docking3d import BaseDocking3d
 
 # Set logger
 logger = logging.getLogger(__name__)

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- This xml file is the configuration of parameters for the BlueROV2 -->
+<!-- These parameters should be loaded into the vehicle instance and overwrite them-->
+
+<!-- Author: Erik Suer-->
+<!-- Date: 29.03.2022-->
+
+<Parameter>
+  <name>remus100</name>
+  <version>1.0</version>
+  <m>11.5</m>
+  <BY>114.8</BY>
+  <I_x>0.21</I_x>
+  <I_y>0.245</I_y>
+  <I_z>0.245</I_z>
+  <I_xy>0.0</I_xy>
+  <I_xz>0.0</I_xz>
+  <I_yz>0.0</I_yz>
+  <x_G>0.0</x_G>
+  <y_G>0.0</y_G>
+  <z_G>0.02</z_G>
+  <x_B>0.0</x_B>
+  <y_B>0.0</y_B>
+  <z_B>0.0</z_B>
+  <X_udot>-7.57</X_udot>  <!-- Date: 18.05.2022 changed to -7.57 from -5.5 due to Munk-Moment instability-->
+  <Y_vdot>-7.57</Y_vdot>  <!-- Date: 18.05.2022 changed to -7.57 from -12.7 due to Munk-Moment instability-->
+  <Z_wdot>-7.57</Z_wdot>  <!-- Date: 03.05.2022 changed to -7.57 from -14.57 due to Munk-Moment instability-->
+  <K_pdot>-0.12</K_pdot>
+  <M_qdot>-0.12</M_qdot>
+  <N_rdot>-0.12</N_rdot>
+  <X_u>-4.03</X_u>
+  <Y_v>-6.22</Y_v>
+  <Z_w>-5.18</Z_w>
+  <K_p>-0.07</K_p>
+  <M_q>-0.07</M_q>
+  <N_r>-0.07</N_r>
+  <X_uu>-18.18</X_uu>
+  <Y_vv>-21.66</Y_vv>
+  <Z_ww>-36.99</Z_ww>
+  <K_pp>-1.55</K_pp>
+  <M_qq>-1.55</M_qq>
+  <N_rr>-1.55</N_rr>
+</Parameter>

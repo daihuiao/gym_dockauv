@@ -20,8 +20,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+#lib/
+#lib64/
 parts/
 sdist/
 var/
@@ -158,3 +158,5 @@ gym_dockauv/notes.py
 /gym_dockauv/tests/test_notes.py
 result_files/
 *logs/
+*.gif
+haha/

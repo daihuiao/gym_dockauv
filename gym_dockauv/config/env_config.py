@@ -13,7 +13,15 @@ REGISTRATION_DICT = {
     "CapsuleCurrentDocking3d-v0": "gym_dockauv.envs:CapsuleCurrentDocking3d",
     "ObstaclesDocking3d-v0": "gym_dockauv.envs:ObstaclesDocking3d",
     "ObstaclesCurrentDocking3d-v0": "gym_dockauv.envs:ObstaclesCurrentDocking3d",
-    "ObstaclesNoCapDocking3d-v0": "gym_dockauv.envs:ObstaclesNoCapDocking3d"
+    "ObstaclesNoCapDocking3d-v0": "gym_dockauv.envs:ObstaclesNoCapDocking3d",
+
+    "SimpleDocking3d_remus-v0": "gym_dockauv.envs:SimpleDocking3d_remus",
+    "SimpleCurrentDocking3d_remus-v0": "gym_dockauv.envs:SimpleCurrentDocking3d_remus",
+    "CapsuleDocking3d_remus-v0": "gym_dockauv.envs:CapsuleDocking3d_remus",
+    "CapsuleCurrentDocking3d_remus-v0": "gym_dockauv.envs:CapsuleCurrentDocking3d_remus",
+    "ObstaclesDocking3d_remus-v0": "gym_dockauv.envs:ObstaclesDocking3d_remus",
+    "ObstaclesCurrentDocking3d_remus-v0": "gym_dockauv.envs:ObstaclesCurrentDocking3d_remus",
+    "ObstaclesNoCapDocking3d_remus-v0": "gym_dockauv.envs:ObstaclesNoCapDocking3d_remus"
 }
 
 # ---------- Base Config for all other possible configs ----------

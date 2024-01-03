@@ -12,15 +12,16 @@ mpl.rcParams["axes.labelsize"] = 14
 mpl.rcParams["xtick.labelsize"] = 12
 mpl.rcParams["ytick.labelsize"] = 12
 
-GYM_ENV = ["SimpleDocking3d-v0", "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
+GYM_ENV = ["SimpleDocking3d_remus-v0", "CapsuleDocking3d_remus-v0", "ObstaclesNoCapDocking3d_remus-v0", "ObstaclesDocking3d_remus-v0"]
 MODELS = [PPO, SAC]
 MODELS_STR = ["_PPO", "_SAC"]
 HYPER_PARAMS = [PPO_HYPER_PARAMS_TEST, SAC_HYPER_PARAMS_TEST]
 
 if __name__ == "__main__":
+    TRAIN_CONFIG["vehicle"] = "remus100"
+
     # ---------- TRAINING ----------
     # Training for multiple models and environment at once
-
     for GYM in GYM_ENV:
         for K, MODEL in enumerate(MODELS):
             train.train(gym_env=GYM,
@@ -59,7 +60,7 @@ if __name__ == "__main__":
     #         train.predict(gym_env=ENV, model_path=os.path.join(subdir, file), MODEL=MODEL, n_episodes=1000, render=False)
 
     # Prediction for one model and one environment
-    # train.predict(gym_env=GYM_ENV[0], model_path="logs/SimpleDocking3d-v0_SAC_720000.zip", MODEL=SAC, n_episodes=3, render=True)
+    # train.predict(gym_env=GYM_ENV[0], model_path="logs/SAC_docking_50000", MODEL=SAC, n_episodes=3, render=True)
     # # Uncomment for plots of previous single run
     # train.post_analysis_directory(directory="/home/erikx3/PycharmProjects/gym_dockauv/predict_logs")
 
@@ -71,6 +72,5 @@ if __name__ == "__main__":
     # ---------- VIDEO GENERATION ----------
     # Example code on how to save a video of on of the saved episode from either prediction or training
     # epi_stor = EpisodeDataStorage()
-    # # epi_stor.load(file_name="/home/erikx3/PycharmProjects/gym_dockauv/predict_logs/2022_06_30T17_13_06__Prediction Run__EPISODE_1_DATA_STORAGE.pkl")
-    # epi_stor.load(file_name="/home/ps/dai/overall/gym_dockauv/logs/2023_12_14T14_47_06__Training Run__EPISODE_7700_DATA_STORAGE.pkl")
+    # epi_stor.load(file_name="/home/erikx3/PycharmProjects/gym_dockauv/predict_logs/2022_06_30T17_13_06__Prediction Run__EPISODE_1_DATA_STORAGE.pkl")
     # epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=20)
