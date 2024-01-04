@@ -5,6 +5,8 @@ import numpy as np
 
 import gym
 from matplotlib import pyplot as plt
+from tqdm import tqdm
+
 from stable_baselines3 import A2C, PPO, DDPG, SAC
 from stable_baselines3.common import base_class
 from stable_baselines3.common.noise import NormalActionNoise

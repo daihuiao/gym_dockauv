@@ -45,6 +45,8 @@ References:
 
 Author:     Thor I. Fossen
 """
+import copy
+
 import numpy as np
 import math
 import sys
@@ -191,12 +193,16 @@ class remus100:
                                  self.M[4][4])
 
         # Tail rudder parameters (single)
-        self.CL_delta_r = 0.5  # rudder lift coefficient
+        # self.CL_delta_r = 0.5  # rudder lift coefficient
+        #todo dai: 转弯太慢了，改了，很假，望州之
+        self.CL_delta_r = 5  # rudder lift coefficient
         self.A_r = 2 * 0.10 * 0.05  # rudder area (m2)
         self.x_r = -a  # rudder x-position (m)
 
         # Stern-plane paramaters (double)
-        self.CL_delta_s = 0.7  # stern-plane lift coefficient
+        # self.CL_delta_s = 0.7  # stern-plane lift coefficient
+        #todo dai: 转弯太慢了，改了，很假，
+        self.CL_delta_s = 7  # stern-plane lift coefficient
         self.A_s = 2 * 0.10 * 0.05  # stern-plane area (m2)
         self.x_s = -a  # stern-plane z-position (m)
 
@@ -467,15 +473,17 @@ class remus100:
         self.simData = np.empty([0, 2 * self.DOF + 2 * self.dimU], float)
 
     def remus_solver(self, u_control, eta, nu, nu_c, u_actual, N=5, sampleTime=0.02):
-
-        for i in range(0, N + 1):
+        # eta_old = copy.deepcopy(eta)
+        for i in range(0, N ):
             # Store simulation data in simData
-            signals = np.append(np.append(np.append(eta, nu), u_control), u_actual)
-            self.simData = np.vstack([self.simData, signals])
+            # signals = np.append(np.append(np.append(eta, nu), u_control), u_actual)
+            # self.simData = np.vstack([self.simData, signals])
 
-            # Propagate vehicle and attitude dynamics
+            # 这里返回的都是AUV坐标系计算的值
             [nu, u_actual, nu_dot] = self.dynamics(eta, nu, u_actual, u_control, sampleTime,nu_c)
-            eta = attitudeEuler(eta, nu, sampleTime)  # 欧拉方法计算位置和速度,函数里使用2.53进行坐标系转化
+
+            # 欧拉方法计算位置和速度,函数里使用2.53进行坐标系转化
+            eta = attitudeEuler(eta, nu, sampleTime)
 
         self.t += N * sampleTime  # simulation time
 

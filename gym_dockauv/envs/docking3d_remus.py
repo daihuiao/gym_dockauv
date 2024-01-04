@@ -260,6 +260,10 @@ class BaseDocking3d_remus(gym.Env):
 
         # ---------- General reset from here on -----------
         self.auv.reset()
+
+        self.auv.last_attitude = self.auv.attitude
+        self.auv.last_position = self.auv.position
+
         self.t_steps = 0
         self.goal_reached = False
         self.collision = False
@@ -384,6 +388,9 @@ class BaseDocking3d_remus(gym.Env):
         self.t_total_steps += 1
         self.t_steps += 1
 
+        self.auv.last_attitude = self.auv.attitude
+        self.auv.last_position = self.auv.position
+
         # Update info dict
         self.info = {"episode_number": self.episode,  # Need to be episode number, because episode is used by sb3
                      "t_step": self.t_steps,
@@ -407,14 +414,19 @@ class BaseDocking3d_remus(gym.Env):
         :return:
         """
         diff = self.goal_location - self.auv.position
+        # self.delta_d 表示的是 AUV 与目标位置之间的距离
         self.delta_d = np.linalg.norm(diff)
-        # self.delta_theta 表示的是为了从 AUV 的当前位置和姿态移动到目标位置所需改变的俯仰角
+        # self.delta_theta 表示的是为了从 AUV 的当前位置和姿态移动到目标位置所需改变的俯仰角.ssa:Smallest Signed Angle
         self.delta_theta = self.auv.attitude[1] + (geom.ssa(np.arctan2(diff[2], np.linalg.norm(diff[:2]))))
         # self.delta_psi 表示 AUV 为了朝向目标位置所需做出的偏航角度调整。
         self.delta_psi = geom.ssa(np.arctan2(diff[1], diff[0]) - self.auv.attitude[2])
+        #有一个预设的方向了， self.delta_heading_goal 表示 AUV 为了朝向目标方向所需做出的偏航角度调整。
         self.delta_heading_goal = geom.ssa(self.heading_goal_reached - self.auv.attitude[2])
 
         self.stable_delta_theta = self.auv.attitude[1]-self.auv.last_attitude[1]
+
+        self.distance_moved_per_step = np.linalg.norm(self.auv.position-self.auv.last_position)
+        # haha = 1
 
     def update_radar_collision(self) -> Union[np.ndarray, None]:
         """
@@ -525,19 +537,33 @@ class BaseDocking3d_remus(gym.Env):
         "w_Theta_max": -200.0,              # Discrete: Too high attitude
         "w_t_max": -100.0,                  # Discrete: Episode maximum length over
         "w_col": -300.0,                    # Discrete: Collision factor
+        last_reward_arr[0]与目标点有关
+        【1】【2】是调整朝向，也和目标点有关
+        【3】【4】是约束roll和pitch为0
+        【5】是约束角速度为0
+        【6】是避障奖励
+        [7] 限制动作幅度
+        【8】-【13】是结束奖励，到达目标给奖励，其余给惩罚
+                Condition 0: Check if close to the goal 400
+                Condition 1: Check if out of bounds for position -200
+                Condition 2: Check if attitude (pitch, roll) too high
+                Condition 3: Check if maximum time steps reached
+                Condition 4: Check for collision
         """
 
-        # Reward for navigational errors
+        # 这个是距离目标点的距离，其中设定了目前和目标点的距离 最大距离和 到达的判定门限。
+        # 这个是一个连续的奖励，距离越近，奖励越大。 里面用了 对数的比值，beautiful
         self.last_reward_arr[0] = -self.reward_factors["w_d"] * Reward.log_precision(
             x=self.delta_d,
             x_goal=self.dist_goal_reached_tol,
             x_max=self.max_dist_from_goal
         )
-
+        # reward_set 好像一直都是1
         if self.reward_set == 1:
             # Set 1
-            self.last_reward_arr[1] = - self.reward_factors["w_delta_theta"] * (self.delta_theta / (np.pi / 2)) ** 2
-            self.last_reward_arr[2] = - self.reward_factors["w_delta_psi"] * (self.delta_psi / np.pi) ** 2
+            # self.delta_theta 表示的是为了从 AUV 的当前位置和姿态移动到目标位置所需改变的俯仰角.ssa:Smallest Signed Angle
+            self.last_reward_arr[1] = - self.reward_factors["w_delta_theta"] * (self.delta_theta / (np.pi / 2)) ** 2 #pitch
+            self.last_reward_arr[2] = - self.reward_factors["w_delta_psi"] * (self.delta_psi / np.pi) ** 2 #yaw
         elif self.reward_set == 2:
             # Set 2
             self.last_reward_arr[1] = - self.reward_factors["w_delta_theta"] * Reward.cont_goal_constraints(
@@ -566,11 +592,13 @@ class BaseDocking3d_remus(gym.Env):
             )
 
         # Reward for stable attitude
-        self.last_reward_arr[3] = -self.reward_factors["w_phi"] * (self.auv.attitude[0] / (np.pi / 2)) ** 2
-        self.last_reward_arr[4] = -self.reward_factors["w_theta"] * (self.auv.attitude[1] / (np.pi / 2)) ** 2
+        #phi 是roll,合理，因为roll是不需要调整的，所以这个奖励是为了让roll保持稳定
+        self.last_reward_arr[3] = -self.reward_factors["w_phi"] * (self.auv.attitude[0]/ (np.pi / 2)) ** 2
+        #todo dai: theta 是pitch，这个合理吗，让他一直保持为0？
+        self.last_reward_arr[4] = -self.reward_factors["w_theta"]* 0 * ((self.auv.attitude[1]-self.auv.last_attitude[1])  / (np.pi / 2)) ** 2
 
         self.last_reward_arr[5] = - self.reward_factors["w_Thetadot"] * (
-                    np.linalg.norm(self.auv.euler_dot) / self.p_max) ** 2
+                    np.linalg.norm(self.auv.euler_dot) / self.p_max) ** 2 #欧拉角是角度，欧拉角的导数是角速度，让角速度尽可能小。
         # Reward function for obstacle avoidance,
 
         if self.reward_set == 1:
@@ -600,7 +628,7 @@ class BaseDocking3d_remus(gym.Env):
             )
 
         self.last_reward_arr[7] = - (np.sum(
-            (np.abs(action) / self.auv.u_bound.shape[0]) ** 2 * self.action_reward_factors))
+            (np.abs(action) / self.auv.u_bound.shape[0]) ** 2 * self.action_reward_factors*0))
 
         # Add extra reward on checking which condition caused the episode to be done (discrete rewards)
         self.last_reward_arr[self.n_cont_rewards:] = np.array(self.conditions) * self.w_done
@@ -636,16 +664,19 @@ class BaseDocking3d_remus(gym.Env):
             self.collision
         ]
 
-        # If goal reached
-        if self.conditions[0]:
-            self.goal_reached = True
-            print("Goal reached, steps: ", self.t_steps)
 
-        # Return also the indexes of which cond is activated
-        cond_idx = [i for i, x in enumerate(self.conditions) if x]
 
         # Check if any condition is true
         done = bool(np.any(self.conditions))  # To satisfy environment checker
+        if done:
+            # If goal reached
+            if self.conditions[0]:
+                self.goal_reached = True
+                print("Goal reached, steps: ", self.t_steps)
+            if self.conditions[2]:
+                print("Attitude too high, steps: ", self.t_steps)
+            # Return also the indexes of which cond is activated
+        cond_idx = [i for i, x in enumerate(self.conditions) if x]
         return done, cond_idx
 
     def render(self, mode="human", rotate_cam=False, real_time=False):

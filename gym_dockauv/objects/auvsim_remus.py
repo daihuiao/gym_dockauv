@@ -1,3 +1,4 @@
+import copy
 from abc import ABC, abstractmethod
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -64,6 +65,7 @@ class AUVSim_remus(StateSpace, ABC):
         """
         self.remus.reset()
         self.state = np.hstack([np.zeros((6,)), np.zeros((6,))])
+        self.last_state = copy.deepcopy(self.state)
         self._state_dot = np.hstack([np.zeros((6,)), np.zeros((6,))])
         self.u = None
         self.u_actual = np.array([0, 0, 0], float)  # actual inputs, defined by vehicle class
@@ -121,6 +123,9 @@ class AUVSim_remus(StateSpace, ABC):
             self.state, self.u_actual, self._state_dot = self.remus.remus_solver(self.u, eta=self.state[:6],
                                                                                  nu=self.state[6:], nu_c=nu_c,
                                                                                  u_actual=self.u_actual)
+            # distance_moved = np.linalg.norm(self.state[:3] - self.last_state[:3])
+            # self.last_state = copy.deepcopy(self.state)
+
             # Convert angle in applicable range
             self.state[3:6] = geom.ssa(self.state[3:6]) # 将欧拉角限制在[-pi, pi]之间
             # self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here

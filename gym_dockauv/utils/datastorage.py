@@ -241,7 +241,8 @@ class EpisodeDataStorage:
         utc_str = datetime.datetime.utcnow().strftime('%Y_%m_%dT%H_%M_%S')
         if len(path_folder) > 0:
             os.makedirs(path_folder, exist_ok=True)  # Create folder if not exists yet
-        self.file_save_name = os.path.join(path_folder, f"{utc_str}__{title}__EPISODE_{episode}_DATA_STORAGE.pkl")
+        # self.file_save_name = os.path.join(path_folder, f"{utc_str}__{title}__EPISODE_{episode}_DATA_STORAGE.pkl")
+        self.file_save_name = os.path.join(path_folder, f"{title}__EPISODE_{episode}.pkl")
         self.vehicle = vehicle  # Vehicle instance (not a copy, automatically a reference which is updated in reference)
         if shapes is None:
             shapes = []

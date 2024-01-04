@@ -260,6 +260,10 @@ class BaseDocking3d(gym.Env):
 
         # ---------- General reset from here on -----------
         self.auv.reset()
+
+        self.auv.last_attitude = self.auv.attitude
+        self.auv.last_position = self.auv.position
+
         self.t_steps = 0
         self.goal_reached = False
         self.collision = False
@@ -384,6 +388,9 @@ class BaseDocking3d(gym.Env):
         self.t_total_steps += 1
         self.t_steps += 1
 
+        self.auv.last_attitude = self.auv.attitude
+        self.auv.last_position = self.auv.position
+
         # Update info dict
         self.info = {"episode_number": self.episode,  # Need to be episode number, because episode is used by sb3
                      "t_step": self.t_steps,
@@ -412,6 +419,10 @@ class BaseDocking3d(gym.Env):
         self.delta_psi = geom.ssa(np.arctan2(diff[1], diff[0]) - self.auv.attitude[2])
         self.delta_heading_goal = geom.ssa(self.heading_goal_reached - self.auv.attitude[2])
 
+        self.stable_delta_theta = self.auv.attitude[1] - self.auv.last_attitude[1]
+
+        self.distance_moved_per_step = np.linalg.norm(self.auv.position - self.auv.last_position)
+        # haha = 1
     def update_radar_collision(self) -> Union[np.ndarray, None]:
         """
         Function to update the radar collision, MUST be called after radar position and attitude update to reflect
@@ -582,7 +593,7 @@ class BaseDocking3d(gym.Env):
             )
 
         self.last_reward_arr[7] = - (np.sum(
-            (np.abs(action) / self.auv.u_bound.shape[0]) ** 2 * self.action_reward_factors))
+            (np.abs(action) / self.auv.u_bound.shape[0]) ** 2 * self.action_reward_factors*0))
 
         # Add extra reward on checking which condition caused the episode to be done (discrete rewards)
         self.last_reward_arr[self.n_cont_rewards:] = np.array(self.conditions) * self.w_done

@@ -94,23 +94,27 @@ class AUVSim(StateSpace, ABC):
         :param nu_c: water current speed vector
         :return: None
         """
-        # Perform ODE simulation step
-        # t = time.time()
-        self.state, q = odesolver45(f=self.state_dot, t=0, y=self.state, h=self.step_size, **{"nu_c": nu_c})
-        # print("ODE solver time: ", time.time() - t)
 
-        # Alternative with official python package - Note: There are a lot of ways to hack a constant step size,
-        # none of them are beautiful
-        # t = time.time()
-        # res = solve_ivp(fun=self.state_dot, t_span=[0, self.step_size],
-        #                 y0=self.state, t_eval=[self.step_size], method='RK45', args=(nu_c,))
-        # print("Scipy solver time: ", time.time() - t)
+        if True:
+            # t = time.time()
+            self.state, q = odesolver45(f=self.state_dot, t=0, y=self.state, h=self.step_size, **{"nu_c": nu_c})
+            # print("ODE solver time: ", time.time() - t)
+        else:
+            # Alternative with official python package - Note: There are a lot of ways to hack a constant step size,
+            # none of them are beautiful
 
-        # self.state2 = res.y.flatten()
+            # t = time.time()
+            res = solve_ivp(fun=self.state_dot, t_span=[0, self.step_size],
+                            y0=self.state, t_eval=[self.step_size], method='RK45', args=(nu_c,))
+            # print("Scipy solver time: ", time.time() - t)
+            self.state = res.y.flatten()
 
-        self.state = self.state1
+
         # Convert angle in applicable range
+
+        #Express input angle between :math:`-\pi` and :math:`+\pi` rad
         self.state[3:6] = geom.ssa(self.state[3:6])
+        #NED坐标系下的位置 姿态 速度 角速度的导数
         self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here
 
     def state_dot(self, t, state, nu_c: np.ndarray) -> np.ndarray:
@@ -154,6 +158,7 @@ class AUVSim(StateSpace, ABC):
         state_dot = np.zeros(12)
 
         # Kinematic Model
+        #在动力学模型中，这个转换矩阵 J 用于将AUV的速度向量（通常在本体坐标系中表示）转换到NED坐标系中。
         state_dot[:6] = geom.J(eta).dot(nu_r + nu_c)
 
         # Kinetic Model
@@ -163,7 +168,7 @@ class AUVSim(StateSpace, ABC):
             - self.C(nu_r).dot(nu_r)
             - self.G(eta))
 
-        return state_dot
+        return state_dot #NED坐标系
 
     @property
     def position(self):

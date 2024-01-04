@@ -45,7 +45,7 @@ class remus100(AUVSim_remus):
             self._u_bound = np.array([
                 [-10, 10],
                 [-10, 10],
-                [0, 1525],])
+                [0, 1525],]) # attention
         # from C.-J. Wu and B. Eng, “6-DoF Modelling and Control of a Remotely Operated Vehicle,” p. 39.ff
         elif control_mode == 'direct':
             self.K_thrust = np.diag([40, 40, 40, 40, 40, 40, 40, 40])  # since each thruster is the same
