@@ -1,6 +1,7 @@
 import numpy as np
 
 from ..utils import geomutils as geom
+from .genenate_current import generate_current
 
 
 class Current:
@@ -30,7 +31,7 @@ class Current:
         self.white_noise_std = white_noise_std
         self.step_size = step_size
 
-    def __call__(self, Theta: np.ndarray) -> np.ndarray:
+    def __call__(self, Theta: np.ndarray,position=None) -> np.ndarray:
         r"""
         Returns the current velocity :math:`\boldsymbol{\nu}_c` in {b} for the AUV when called
 
@@ -45,11 +46,18 @@ class Current:
         theta = Theta[1]
         psi = Theta[2]
 
-        vel_current_NED = self.get_current_NED()
-        vel_current_BODY = np.transpose(geom.Rzyx(phi, theta, psi)).dot(vel_current_NED)
+        if position is None:
+            vel_current_NED = self.get_current_NED()
+            vel_current_BODY = np.transpose(geom.Rzyx(phi, theta, psi)).dot(vel_current_NED)
 
-        nu_c = np.array([*vel_current_BODY, 0, 0, 0])
+            nu_c = np.array([*vel_current_BODY, 0, 0, 0])
+        else:
 
+            # vel_current_NED = self.get_current_NED()
+            vel_current_NED = generate_current(position[0], position[1], position[2], 0)
+            vel_current_BODY = np.transpose(geom.Rzyx(phi, theta, psi)).dot(vel_current_NED)
+
+            nu_c = np.array([*vel_current_BODY, 0, 0, 0])
         return nu_c
 
     def get_current_NED(self) -> np.ndarray:

@@ -66,8 +66,8 @@ if __name__ == "__main__":
                  "/logs/SimpleDocking3d_remus-v0_SAC_3"
         epi_stor = EpisodeDataStorage()
         epi_stor.load(
-            file_name=prefix+"/Training Run__EPISODE_100.pkl")
-        epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=20)
+            file_name=prefix+"/Training Run__EPISODE_300.pkl")
+        epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)
 
     # # Training for one model and one environment
     # train.train(gym_env=GYM_ENV[0],

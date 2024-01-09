@@ -29,7 +29,7 @@ BASE_CONFIG = {
     # ---------- GENERAL ----------
     "config_name": "DEFAULT_BASE_CONFIG",   # Optional Identifier of config, if the title does not say everything
     "title": "DEFAULT",                     # Title used in e.g. animation plot or file names as identifier
-    "log_level": 20,                        # Level of logging, 0 means all messages, 30 means warning and above,
+    "log_level": 30,                        # Level of logging, 0 means all messages, 30 means warning and above,
                                             # look here: https://docs.python.org/3/library/logging.html#logging-levels
     "verbose": 1,                           # If logs should also appear in output console, either 0 or 1
 

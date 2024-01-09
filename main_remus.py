@@ -16,24 +16,32 @@ mpl.rcParams["ytick.labelsize"] = 12
 
 GYM_ENV = ["SimpleDocking3d_remus-v0", "CapsuleDocking3d_remus-v0", "ObstaclesNoCapDocking3d_remus-v0",
            "ObstaclesDocking3d_remus-v0"]
-# MODELS = [PPO, SAC]
-# MODELS_STR = ["_PPO", "_SAC"]
-# HYPER_PARAMS = [PPO_HYPER_PARAMS_TEST, SAC_HYPER_PARAMS_TEST]
-
+MODELS = [
+    # SAC,
+    PPO,
+]
+MODELS_STR = [
+    # "_SAC",
+    "_PPO",
+]
+HYPER_PARAMS = [
+    # SAC_HYPER_PARAMS_TEST,
+    PPO_HYPER_PARAMS_TEST,
+]
 
 # GYM_ENV = ["SimpleCurrentDocking3d-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
 # GYM_ENV = ["SimpleDocking3d_remus-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
-MODELS = [SAC]
-MODELS_STR = ["_SAC"]
-HYPER_PARAMS = [SAC_HYPER_PARAMS_TEST]
+# MODELS = [SAC]
+# MODELS_STR = ["_SAC"]
+# HYPER_PARAMS = [SAC_HYPER_PARAMS_TEST]
 if __name__ == "__main__":
     TRAIN_CONFIG["vehicle"] = "remus100"
     if True:
         # if False:
         # ---------- TRAINING ----------
         # Training for multiple models and environment at once
-        for GYM in GYM_ENV:
-            for K, MODEL in enumerate(MODELS):
+        for K, MODEL in enumerate(MODELS):
+            for GYM in GYM_ENV:
                 TRAIN_CONFIG["title"] = "Training Run"
 
                 log_dir = os.path.join(os.getcwd(), "logs/")
@@ -49,7 +57,7 @@ if __name__ == "__main__":
                 TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", curr_run)
 
                 train.train(gym_env=GYM,
-                            total_timesteps=1000000,
+                            total_timesteps=10000000,
                             MODEL=MODEL,
                             model_save_path="logs/" + curr_run + "/" + GYM + MODELS_STR[K],
                             tb_log_name=curr_run,

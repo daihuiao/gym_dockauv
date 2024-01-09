@@ -98,7 +98,7 @@ class BaseDocking3d_remus(gym.Env):
         self.current = Current(mu=0.005, V_min=0.0, V_max=0.0, Vc_init=0.0,
                                alpha_init=np.pi / 4, beta_init=np.pi / 4, white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude)
+        self.nu_c = self.current(self.auv.attitude,position=self.auv.position)
 
         # Init radar sensor suite
         self.radar_args = self.config["radar"]
@@ -283,7 +283,8 @@ class BaseDocking3d_remus(gym.Env):
         self.current = Current(mu=0.005, V_min=0.0, V_max=0.0, Vc_init=0.0,
                                alpha_init=np.pi / 4, beta_init=np.pi / 4, white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude)
+        # self.nu_c = self.current(self.auv.attitude)
+        self.nu_c = self.current(self.auv.attitude,position=self.auv.position)
 
         # Radar reset:
         self.radar.reset(self.auv.eta)
@@ -350,10 +351,13 @@ class BaseDocking3d_remus(gym.Env):
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         # Simulate and update current in body frame
         self.current.sim()
-        self.nu_c = self.current(self.auv.attitude)
+        if True:
+            self.nu_c = self.current(self.auv.attitude,position = self.auv.position)
+        else:
+            self.nu_c = self.current(self.auv.attitude)
 
         # Update AUV dynamics
-        self.auv.step(action, self.current(self.auv.attitude))
+        self.auv.step(action, self.current(self.auv.attitude ,position = self.auv.position))
 
         # Update radar
         self.radar.update(self.auv.eta)
@@ -893,7 +897,7 @@ class SimpleDocking3d_remus(BaseDocking3d_remus):
         self.current = Current(mu=0.005, V_min=0.0, V_max=0.0, Vc_init=0.0,
                                alpha_init=0.0, beta_init=0.0, white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude)
+        self.nu_c = self.current(self.auv.attitude,position = self.auv.position)
         # Obstacles:
         self.obstacles = []
 
@@ -919,7 +923,7 @@ class SimpleCurrentDocking3d_remus(SimpleDocking3d_remus):
         self.current = Current(mu=0.005, V_min=speed, V_max=speed, Vc_init=0.5,
                                alpha_init=curr_angle[0], beta_init=curr_angle[1], white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude)
+        self.nu_c = self.current(self.auv.attitude,position = self.auv.position)
 
 
 class CapsuleDocking3d_remus(SimpleDocking3d_remus):
@@ -978,7 +982,7 @@ class CapsuleCurrentDocking3d_remus(CapsuleDocking3d_remus):
         self.current = Current(mu=0.005, V_min=0.5, V_max=0.5, Vc_init=0.5,
                                alpha_init=curr_angle[0], beta_init=curr_angle[1], white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude)
+        self.nu_c = self.current(self.auv.attitude,position = self.auv.position)
 
 
 class ObstaclesDocking3d_remus(CapsuleDocking3d_remus):
