@@ -4,6 +4,7 @@ from copy import deepcopy
 import datetime
 import numpy as np
 import logging
+from matplotlib import pyplot as plt
 
 # Used for typehints
 from ..objects.auvsim import AUVSim
@@ -441,6 +442,26 @@ class EpisodeDataStorage:
         Individual wrapper to save video of loaded storage
         :return:
         """
+        x, y, z = self.states[:, 0], self.states[:, 1], self.states[:, 2]
+
+        # 创建一个 3D 图形
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot(x, y, z)
+        ax.view_init(elev=94, azim=-89)
+        ax.set_xlabel('X Axis')
+        ax.set_ylabel('Y Axis')
+        ax.set_zlabel('Z Axis')
+        plt.show()
+
+        # 创建一个 2D 图形
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(x, y)
+        ax.set_xlabel('X Axis')
+        ax.set_ylabel('Y Axis')
+        plt.show()
+
         EpisodeVisualization.save_animation_video(save_path=save_path,
                                                   fps=fps,
                                                   states=self.states,

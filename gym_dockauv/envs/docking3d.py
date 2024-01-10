@@ -282,7 +282,8 @@ class BaseDocking3d(gym.Env):
         # Water current reset
         self.current = Current(mu=0.005, V_min=0.0, V_max=0.0, Vc_init=0.0,
                                alpha_init=np.pi / 4, beta_init=np.pi / 4, white_noise_std=0.0,
-                               step_size=self.auv.step_size)
+                               step_size=self.auv.step_size,
+                               current_scale=2.0)
         self.nu_c = self.current(self.auv.attitude)
 
         # Radar reset:

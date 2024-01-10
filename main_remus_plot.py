@@ -63,10 +63,10 @@ if __name__ == "__main__":
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training
         prefix = "/home/ps/dai/overall/togithub/gym_dockauv" \
-                 "/logs/SimpleDocking3d_remus-v0_PPO_5"
+                 "/logs/SimpleDocking3d_remus-v0_PPO_1"
         epi_stor = EpisodeDataStorage()
         epi_stor.load(
-            file_name=prefix+"/Training Run__EPISODE_3.pkl")
+            file_name=prefix+"/Training Run__EPISODE_2.pkl")
         epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)
 
     # # Training for one model and one environment

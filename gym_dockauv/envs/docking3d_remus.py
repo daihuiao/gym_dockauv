@@ -898,12 +898,12 @@ class SimpleDocking3d_remus(BaseDocking3d_remus):
         DISTANCE_FROM_GOAL = 15
 
         # Goal location:
-        self.goal_location = np.array([0.0, 0.0, 0.0])
+        self.goal_location = np.array([10.0, 0.0, 0.0])
         # Goal attitude:
         self.heading_goal_reached = (np.random.random() - 0.5) * np.pi  # Random here, since no capsule here
         # Position
         # self.auv.position = self.generate_random_pos(d=DISTANCE_FROM_GOAL)
-        self.auv.position = np.array([-4.0, 0.0, 0.0])
+        self.auv.position = np.array([-8, 0.0, 0.0])
         # Attitude
         self.auv.attitude = self.generate_random_att(max_att_factor=0.7)
         # Water current

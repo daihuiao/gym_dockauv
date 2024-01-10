@@ -363,7 +363,13 @@ class EpisodeAnimation:
         :return: axes
         """
         # Create Axis
-        self.ax_path = self.fig.add_subplot(projection="3d")
+        self.ax_path = self.fig.add_subplot(projection="3d",)
+
+        # 设置初始视角
+        self.ax_path.view_init(elev=-96, azim=91)
+        self.ax_path.set_xlim([-20, 20])
+        self.ax_path.set_ylim([-20, 20])
+        self.ax_path.set_zlim([-20, 20])
 
         # Create lines initially without data
         self.ax_path.path_art = self.ax_path.plot([], [], [], 'g--', alpha=1.0, animated=True)[0]
@@ -377,15 +383,15 @@ class EpisodeAnimation:
         self.bm.add_artists([self.ax_path.path_art, self.ax_path.head_art])
 
         # Add labels
-        self.ax_path.set_xlabel("North [m]")
-        self.ax_path.set_ylabel("East [m]")
-        self.ax_path.set_zlabel("Down [m]")
+        self.ax_path.set_ylabel("y [m]")
+        self.ax_path.set_xlabel("x [m]")
+        self.ax_path.set_zlabel("z [m]")
 
         # Try to fix deep camera angle issues
         self.ax_path.set_proj_type('ortho')
 
         # Pause for any initialization to be done
-        plt.pause(0.01)
+        plt.pause(0.001)
         return self.ax_path
 
     def init_radar_animation(self, n_rays: int) -> None:

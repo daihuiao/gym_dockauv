@@ -20,7 +20,7 @@ class Current:
     """
 
     def __init__(self, mu: float, V_min: float, V_max: float, Vc_init: float, alpha_init: float, beta_init: float,
-                 white_noise_std: float, step_size: float):
+                 white_noise_std: float, step_size: float, current_scale: float=1.0):
 
         self.mu = mu
         self.V_min = V_min
@@ -30,6 +30,7 @@ class Current:
         self.beta = beta_init
         self.white_noise_std = white_noise_std
         self.step_size = step_size
+        self.current_scale = current_scale
 
     def __call__(self, Theta: np.ndarray,position=None) -> np.ndarray:
         r"""
@@ -54,7 +55,7 @@ class Current:
         else:
 
             # vel_current_NED = self.get_current_NED()
-            vel_current_NED = generate_current(position[0], position[1], position[2], 0)
+            vel_current_NED = self.current_scale * generate_current(position[0], position[1], position[2], 0)
             vel_current_BODY = np.transpose(geom.Rzyx(phi, theta, psi)).dot(vel_current_NED)
 
             nu_c = np.array([*vel_current_BODY, 0, 0, 0])
