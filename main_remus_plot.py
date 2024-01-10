@@ -4,7 +4,7 @@ from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_TEST, SAC_HYPER_
 from stable_baselines3 import A2C, PPO, DDPG, SAC
 
 from gym_dockauv.config.env_config import TRAIN_CONFIG
-import gym_dockauv.train as train
+# import gym_dockauv.train as train
 from gym_dockauv.utils.datastorage import EpisodeDataStorage
 import matplotlib as mpl
 import os
@@ -63,10 +63,10 @@ if __name__ == "__main__":
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training
         prefix = "/home/ps/dai/overall/togithub/gym_dockauv" \
-                 "/logs/SimpleDocking3d_remus-v0_SAC_3"
+                 "/logs/SimpleDocking3d_remus-v0_PPO_5"
         epi_stor = EpisodeDataStorage()
         epi_stor.load(
-            file_name=prefix+"/Training Run__EPISODE_300.pkl")
+            file_name=prefix+"/Training Run__EPISODE_3.pkl")
         epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)
 
     # # Training for one model and one environment

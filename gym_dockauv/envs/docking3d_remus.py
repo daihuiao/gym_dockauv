@@ -655,19 +655,31 @@ class BaseDocking3d_remus(gym.Env):
         :return: [if simulation is done, indexes of conditions that are true]
         """
         # All conditions in a list
+        # self.conditions = [
+        #     # Condition 0: Check if close to the goal
+        #     self.delta_d < self.dist_goal_reached_tol,
+        #     # Condition 1: Check if out of bounds for position
+        #     self.delta_d > self.max_dist_from_goal,
+        #     # Condition 2: Check if attitude (pitch, roll) too high
+        #     np.any(np.abs(self.auv.attitude[:2]) > self.max_attitude),
+        #     # Condition 3: Check if maximum time steps reached
+        #     self.t_steps >= self.max_timesteps,
+        #     # Condition 4: Collision with obstacle (is updated earlier)
+        #     self.collision
+        # ]
         self.conditions = [
             # Condition 0: Check if close to the goal
             self.delta_d < self.dist_goal_reached_tol,
             # Condition 1: Check if out of bounds for position
             self.delta_d > self.max_dist_from_goal,
             # Condition 2: Check if attitude (pitch, roll) too high
-            np.any(np.abs(self.auv.attitude[:2]) > self.max_attitude),
+            # np.any(np.abs(self.auv.attitude[:2]) > self.max_attitude),
+            False,
             # Condition 3: Check if maximum time steps reached
             self.t_steps >= self.max_timesteps,
             # Condition 4: Collision with obstacle (is updated earlier)
             self.collision
         ]
-
 
 
         # Check if any condition is true
@@ -890,7 +902,8 @@ class SimpleDocking3d_remus(BaseDocking3d_remus):
         # Goal attitude:
         self.heading_goal_reached = (np.random.random() - 0.5) * np.pi  # Random here, since no capsule here
         # Position
-        self.auv.position = self.generate_random_pos(d=DISTANCE_FROM_GOAL)
+        # self.auv.position = self.generate_random_pos(d=DISTANCE_FROM_GOAL)
+        self.auv.position = np.array([-4.0, 0.0, 0.0])
         # Attitude
         self.auv.attitude = self.generate_random_att(max_att_factor=0.7)
         # Water current

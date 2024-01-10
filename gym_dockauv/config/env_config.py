@@ -38,7 +38,7 @@ BASE_CONFIG = {
 
     # ---------- SIMULATION --------------
     "t_step_size": 0.10,                    # Length of each simulation timestep [s]
-    "interval_datastorage": 100,            # Interval of episodes on which extended data is saved through data class
+    "interval_datastorage": 1,            # Interval of episodes on which extended data is saved through data class
     "interval_episode_log": 50,             # Log the episode info dict in specific interval into the log file
     "save_path_folder": os.path.join(os.getcwd(), "logs"),  # Folder name where all result files will be stored
 

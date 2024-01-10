@@ -51,8 +51,8 @@ if True:
                     raise ValueError("Magnitude is too large")
                     magnitude = 0
                 # Calculate the vector components
-                U[i, j, k] = magnitude * direction[0]
-                V[i, j, k] = magnitude * direction[1]
+                U[i, j, k] = 1*magnitude * direction[0]
+                V[i, j, k] = 1*magnitude * direction[1]
 
     with open("current.pkl", "wb") as f:
         import pickle

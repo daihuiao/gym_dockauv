@@ -248,10 +248,11 @@ class remus100:
         """
 #todo dai 默认这里的nu_c是0,如果想要加入水流的影响，需要在这里加入水流的影响，把下面的洋流替换，nu_c=[0,0,0,0,0,0]
         # Current velocities
-        u_c = self.V_c * math.cos(self.beta_c - eta[5])  # current surge velocity
-        v_c = self.V_c * math.sin(self.beta_c - eta[5])  # current sway velocity
+        # u_c = self.V_c * math.cos(self.beta_c - eta[5])  # current surge velocity
+        # v_c = self.V_c * math.sin(self.beta_c - eta[5])  # current sway velocity
+        u_c, v_c, should_be_zero, _, _, _ = nu_c
 
-        nu_c = np.array([u_c, v_c, 0, 0, 0, 0], float)  # current velocity
+        nu_c = np.array([u_c, v_c, should_be_zero, 0, 0, 0], float)  # current velocity
         Dnu_c = np.array([nu[5] * v_c, -nu[5] * u_c, 0, 0, 0, 0], float)  # derivative
         nu_r = nu - nu_c  # relative velocity
         alpha = math.atan2(nu_r[2], nu_r[0])  # angle of attack
