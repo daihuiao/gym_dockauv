@@ -14,26 +14,35 @@ mpl.rcParams["axes.labelsize"] = 14
 mpl.rcParams["xtick.labelsize"] = 12
 mpl.rcParams["ytick.labelsize"] = 12
 
-GYM_ENV = ["SimpleDocking3d_remus-v0", "CapsuleDocking3d_remus-v0", "ObstaclesNoCapDocking3d_remus-v0",
-           "ObstaclesDocking3d_remus-v0"]
+# GYM_ENV = ["SimpleDocking3d_remus-v0", "CapsuleDocking3d_remus-v0", "ObstaclesNoCapDocking3d_remus-v0",
+#            "ObstaclesDocking3d_remus-v0"]
+# MODELS = [
+#     SAC,
+#     PPO,
+# ]
+# MODELS_STR = [
+#     "_SAC",
+#     "_PPO",
+# ]
+# HYPER_PARAMS = [
+#     SAC_HYPER_PARAMS_TEST,
+#     PPO_HYPER_PARAMS_TEST,
+# ]
+
+# GYM_ENV = ["SimpleCurrentDocking3d-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
+GYM_ENV = ["SimpleDocking3d_remus-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
 MODELS = [
-    # SAC,
+    SAC,
     PPO,
 ]
 MODELS_STR = [
-    # "_SAC",
+    "_SAC",
     "_PPO",
 ]
 HYPER_PARAMS = [
-    # SAC_HYPER_PARAMS_TEST,
+    SAC_HYPER_PARAMS_TEST,
     PPO_HYPER_PARAMS_TEST,
 ]
-
-# GYM_ENV = ["SimpleCurrentDocking3d-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
-# GYM_ENV = ["SimpleDocking3d_remus-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
-# MODELS = [SAC]
-# MODELS_STR = ["_SAC"]
-# HYPER_PARAMS = [SAC_HYPER_PARAMS_TEST]
 if __name__ == "__main__":
     TRAIN_CONFIG["vehicle"] = "remus100"
     if True:

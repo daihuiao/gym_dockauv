@@ -48,7 +48,7 @@ SAC_HYPER_PARAMS_DEFAULT = {
     "policy_kwargs": None,
     "verbose": 0,
     "seed": None,
-    "device": "cuda:1",
+    "device": "cuda:0",
     "_init_setup_model": True
 }
 
@@ -101,6 +101,6 @@ SAC_HYPER_PARAMS_TEST = {
     "policy_kwargs": None,
     "verbose": 0,
     "seed": None,
-    "device": "cuda:1",
+    "device": "cuda:0",
     "_init_setup_model": True
 }

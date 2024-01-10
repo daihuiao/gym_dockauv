@@ -95,7 +95,7 @@ if False:
     ax.legend()
     # Show the plot
     plt.show()
-else:
+elif False:
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
     curve_len =2
@@ -180,54 +180,53 @@ def generate_current( input_y, input_x,input_z, t):  # longitude (经度), latit
     # w = W[nearest_x_idx, nearest_y_idx, nearest_z_idx]
     # # print("time2", time.time() - t)
 
-    return np.array([u, v, w]) #todo dai 我乱了，这里是不是应该是u,v,w
+    return np.array([u, v, w])
 
+#测试生成的洋流
+if False:
+    import matplotlib.pyplot as plt
+    import numpy as np
+    # 创建 x 和 y 的网格
+    x_ = np.arange(-20, 21, 2)
+    y_ = np.arange(-20, 21, 2)
+    X_, Y_ = np.meshgrid(x_, y_)
 
-import matplotlib.pyplot as plt
-import numpy as np
+    # 初始化 u 和 v 来存储洋流速度的 x 和 y 分量
+    atest_U = np.zeros_like(X_,dtype=np.float)
+    atest_V = np.zeros_like(Y_,dtype=np.float)
 
+    # 遍历所有点并计算洋流速度
+    for i in range(X_.shape[0]):
+        for j in range(X_.shape[1]):
+            position = (X_[i, j], Y_[i, j], 0)  # z 始终为 0
+            current = generate_current(*position, 0)
+            atest_U[i, j] = current[0]
+            atest_V[i, j] = current[1]
 
-# 创建 x 和 y 的网格
-x_ = np.arange(-20, 21, 2)
-y_ = np.arange(-20, 21, 2)
-X_, Y_ = np.meshgrid(x_, y_)
+    plt.figure(figsize=(10, 10))
 
-# 初始化 u 和 v 来存储洋流速度的 x 和 y 分量
-atest_U = np.zeros_like(X_,dtype=np.float)
-atest_V = np.zeros_like(Y_,dtype=np.float)
+    # 遍历所有点并绘制洋流速度
+    for i in range(X_.shape[0]):
+        for j in range(X_.shape[1]):
+            # 线段的起点
+            start_point = [X_[i, j], Y_[i, j]]
 
-# 遍历所有点并计算洋流速度
-for i in range(X_.shape[0]):
-    for j in range(X_.shape[1]):
-        position = (X_[i, j], Y_[i, j], 0)  # z 始终为 0
-        current = generate_current(*position, 0)
-        atest_U[i, j] = current[0]
-        atest_V[i, j] = current[1]
+            # 线段的终点（表示洋流方向和大小）
+            end_point = [X_[i, j] + atest_U[i, j], Y_[i, j] + atest_V[i, j]]
 
-plt.figure(figsize=(10, 10))
+            # 绘制线段
+            plt.plot([start_point[0], end_point[0]],
+                     [start_point[1], end_point[1]],
+                     color='blue')
 
-# 遍历所有点并绘制洋流速度
-for i in range(X_.shape[0]):
-    for j in range(X_.shape[1]):
-        # 线段的起点
-        start_point = [X_[i, j], Y_[i, j]]
+    # 添加标签和标题
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Current Velocity Field')
+    plt.grid(True)
+    plt.show()
 
-        # 线段的终点（表示洋流方向和大小）
-        end_point = [X_[i, j] + atest_U[i, j], Y_[i, j] + atest_V[i, j]]
-
-        # 绘制线段
-        plt.plot([start_point[0], end_point[0]],
-                 [start_point[1], end_point[1]],
-                 color='blue')
-
-# 添加标签和标题
-plt.xlabel('X')
-plt.ylabel('Y')
-plt.title('Current Velocity Field')
-plt.grid(True)
-plt.show()
-
-haha = True
+    haha = True
 
 
 # # 维度1000米： 180*1000/math.pi/6371000
