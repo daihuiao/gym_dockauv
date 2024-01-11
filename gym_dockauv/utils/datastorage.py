@@ -218,7 +218,8 @@ class EpisodeDataStorage:
     def set_up_episode_storage(self, path_folder: str, vehicle: AUVSim, step_size: float,
                                nu_c_init: np.ndarray, shapes: List[Shape] = None,
                                radar: Radar = None, title: str = "", episode: int = -1,
-                               env=None
+                               env=None,
+                               index = 0
                                ) -> None:
         r"""
         Set up the storage to save and update incoming data, including passing a reference to the vehicle and
@@ -243,7 +244,7 @@ class EpisodeDataStorage:
         if len(path_folder) > 0:
             os.makedirs(path_folder, exist_ok=True)  # Create folder if not exists yet
         # self.file_save_name = os.path.join(path_folder, f"{utc_str}__{title}__EPISODE_{episode}_DATA_STORAGE.pkl")
-        self.file_save_name = os.path.join(path_folder, f"{title}__EPISODE_{episode}.pkl")
+        self.file_save_name = os.path.join(path_folder, f"{title}__EPISODE_{episode}__process_{index}.pkl")
         self.vehicle = vehicle  # Vehicle instance (not a copy, automatically a reference which is updated in reference)
         if shapes is None:
             shapes = []

@@ -49,6 +49,11 @@ class BaseDocking3d_remus(gym.Env):
         super().__init__()
         # Basic config for logger
         self.config = env_config
+        try:
+            env_config["index"]
+        except KeyError:
+            env_config["index"] = None
+        self.index = env_config["index"] if env_config["index"] is not None else 0
         self.title = self.config["title"]
         self.save_path_folder = self.config["save_path_folder"]
         self.log_level = self.config["log_level"]

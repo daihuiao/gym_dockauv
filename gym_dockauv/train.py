@@ -1,3 +1,4 @@
+import copy
 import os
 import logging
 
@@ -55,15 +56,17 @@ def train(gym_env: str,
     """
     # Create environment
     if vector_env is not None:
-        def make_env():
+        def make_env_(index):
             def _init():
-                env = make_gym(gym_env=gym_env, env_config=env_config)  # type: BaseDocking3d
+                env_config_ = copy.deepcopy(env_config)
+                env_config_["index"] = index
+                env = make_gym(gym_env=gym_env, env_config=env_config_)  # type: BaseDocking3d
                 # env = Monitor(env, './sb3logs/')  # 设置日志文件夹
                 env = Monitor(env)  # 设置日志文件夹
                 return env
             return _init
 
-        envs = [make_env() for _ in range(vector_env)]
+        envs = [make_env_(_) for _ in range(vector_env)]
         # env = DummyVecEnv(envs)
         env = SubprocVecEnv(envs)
     else:
