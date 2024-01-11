@@ -74,7 +74,8 @@ if __name__ == "__main__":
                             agent_hyper_params=HYPER_PARAMS[K],
                             env_config=TRAIN_CONFIG,
                             timesteps_per_save=100000,
-                            model_load_path=None)
+                            model_load_path=None,
+                            vector_env=8,)
     else:
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training

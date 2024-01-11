@@ -10,6 +10,7 @@ from tqdm import tqdm
 from stable_baselines3 import A2C, PPO, DDPG, SAC
 from stable_baselines3.common import base_class
 from stable_baselines3.common.noise import NormalActionNoise
+from stable_baselines3.common.vec_env import SubprocVecEnv
 
 from .utils.datastorage import EpisodeDataStorage, FullDataStorage
 from .config.DRL_hyperparams import PPO_HYPER_PARAMS_DEFAULT
@@ -28,7 +29,8 @@ def train(gym_env: str,
           env_config: dict = TRAIN_CONFIG,
           tb_log_name: str = "PPO",
           timesteps_per_save: int = None,
-          model_load_path: str = None) -> None:
+          model_load_path: str = None,
+          vector_env: int = None) -> None:
     f"""
     Function to train and save model, own wrapper
     
@@ -52,7 +54,19 @@ def train(gym_env: str,
     :return: None
     """
     # Create environment
-    env = make_gym(gym_env=gym_env, env_config=env_config)  # type: BaseDocking3d
+    if vector_env is not None:
+        def make_env():
+            def _init():
+                env = make_gym(gym_env=gym_env, env_config=env_config)  # type: BaseDocking3d
+                return env
+            return _init
+
+        envs = [make_env() for _ in range(vector_env)]
+        # env = DummyVecEnv(envs)
+        env = SubprocVecEnv(envs)
+    else:
+        env = make_gym(gym_env=gym_env, env_config=env_config)  # type: BaseDocking3d
+
     # Init variables
     elapsed_timesteps = 0
     sim_timesteps = timesteps_per_save if timesteps_per_save else total_timesteps
