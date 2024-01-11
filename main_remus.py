@@ -1,9 +1,10 @@
+import copy
 from pathlib import Path
 
 from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_TEST, SAC_HYPER_PARAMS_TEST
 from stable_baselines3 import A2C, PPO, DDPG, SAC
 
-from gym_dockauv.config.env_config import TRAIN_CONFIG
+from gym_dockauv.config.env_config import TRAIN_CONFIG,TRAIN_CONFIG_remus
 import gym_dockauv.train as train
 from gym_dockauv.utils.datastorage import EpisodeDataStorage
 import matplotlib as mpl
@@ -44,14 +45,16 @@ HYPER_PARAMS = [
     PPO_HYPER_PARAMS_TEST,
 ]
 if __name__ == "__main__":
-    TRAIN_CONFIG["vehicle"] = "remus100"
+    # used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
+    used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus)
+    used_TRAIN_CONFIG["vehicle"] = "remus100"
     if True:
         # if False:
         # ---------- TRAINING ----------
         # Training for multiple models and environment at once
         for K, MODEL in enumerate(MODELS):
             for GYM in GYM_ENV:
-                TRAIN_CONFIG["title"] = "Training Run"
+                used_TRAIN_CONFIG["title"] = "Training Run"
 
                 log_dir = os.path.join(os.getcwd(), "logs/")
                 log_dir = Path(log_dir)
@@ -63,7 +66,7 @@ if __name__ == "__main__":
                     curr_run = file_name_prefix + "_" + '1'
                 else:
                     curr_run = file_name_prefix + "_" + '%i' % (max(exst_run_nums) + 1)
-                TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", curr_run)
+                used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", curr_run)
 
                 train.train(gym_env=GYM,
                             total_timesteps=10000000,
@@ -72,10 +75,10 @@ if __name__ == "__main__":
                             tb_log_name=curr_run,
 
                             agent_hyper_params=HYPER_PARAMS[K],
-                            env_config=TRAIN_CONFIG,
+                            env_config=used_TRAIN_CONFIG,
                             timesteps_per_save=100000,
                             model_load_path=None,
-                            vector_env=8,)
+                            vector_env=16, )
     else:
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training

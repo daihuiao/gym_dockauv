@@ -642,6 +642,9 @@ class BaseDocking3d_remus(gym.Env):
 
         reward = float(np.sum(self.last_reward_arr))
 
+        velocity_reward = self.reward_factors["w_velocity"] * \
+                  np.linalg.norm(self.auv.ned_velocity[0:2])#todo dai: 这里想用横向上的速度作为奖励，
+        reward += velocity_reward
         return reward
 
     def is_done(self) -> Tuple[bool, list]:

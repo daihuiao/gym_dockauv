@@ -2,6 +2,7 @@ import copy
 from abc import ABC, abstractmethod
 import numpy as np
 from scipy.integrate import solve_ivp
+from python_vehicle_simulator.lib.gnc import ssa, Rzyx, Tzyx
 
 from .statespace import StateSpace
 from ..utils import geomutils as geom
@@ -91,7 +92,7 @@ class AUVSim_remus(StateSpace, ABC):
         # Un-normalize action input from outside and apply low-pass filter to changes
         # self.u = self.lowpassfilter.apply_lowpass(self.unnormalize_input(action), self.u)
         # self.u = self.unnormalize_input(action)
-        self.u = action # bug fixed ,why?
+        self.u = action  # bug fixed ,why? 峨峨峨,我知道了，他原来的代码就有问题，sb3本来就会做一个去皈依化，而他可能之前用的其他算法库。
         self._sim(nu_c)
 
     def _sim(self, nu_c: np.ndarray) -> None:
@@ -118,7 +119,7 @@ class AUVSim_remus(StateSpace, ABC):
             # self.state2 = res.y.flatten()
 
             # Convert angle in applicable range
-            self.state[3:6] = geom.ssa(self.state[3:6]) # 将欧拉角限制在[-pi, pi]之间
+            self.state[3:6] = geom.ssa(self.state[3:6])  # 将欧拉角限制在[-pi, pi]之间
             self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here
         else:
             self.state, self.u_actual, self._state_dot = self.remus.remus_solver(self.u, eta=self.state[:6],
@@ -128,7 +129,7 @@ class AUVSim_remus(StateSpace, ABC):
             # self.last_state = copy.deepcopy(self.state)
 
             # Convert angle in applicable range
-            self.state[3:6] = geom.ssa(self.state[3:6]) # 将欧拉角限制在[-pi, pi]之间
+            self.state[3:6] = geom.ssa(self.state[3:6])  # 将欧拉角限制在[-pi, pi]之间
             # self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here
 
     def state_dot(self, t, state, nu_c: np.ndarray) -> np.ndarray:
@@ -245,6 +246,20 @@ class AUVSim_remus(StateSpace, ABC):
             \end{bmatrix}^T
         """
         return self.state[6:9]
+
+    @property
+    def ned_velocity(self):#todo dai: 这个函数不保熟，小心食用
+        r"""
+        Returns the NED velocity of the AUV.
+
+        .. math::
+
+            \boldsymbol{v} = \begin{bmatrix}
+                u & v & w
+            \end{bmatrix}^T
+        """
+        velocity = np.matmul(Rzyx(self.eta[3], self.eta[4], self.eta[5]), self.state[6:9])
+        return velocity
 
     @property
     def relative_speed(self):

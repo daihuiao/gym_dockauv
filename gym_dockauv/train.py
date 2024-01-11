@@ -6,7 +6,7 @@ import numpy as np
 import gym
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-
+from stable_baselines3.common.monitor import Monitor
 from stable_baselines3 import A2C, PPO, DDPG, SAC
 from stable_baselines3.common import base_class
 from stable_baselines3.common.noise import NormalActionNoise
@@ -58,6 +58,8 @@ def train(gym_env: str,
         def make_env():
             def _init():
                 env = make_gym(gym_env=gym_env, env_config=env_config)  # type: BaseDocking3d
+                # env = Monitor(env, './sb3logs/')  # 设置日志文件夹
+                env = Monitor(env)  # 设置日志文件夹
                 return env
             return _init
 
