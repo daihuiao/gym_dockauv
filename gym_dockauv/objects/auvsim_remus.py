@@ -90,7 +90,8 @@ class AUVSim_remus(StateSpace, ABC):
         """
         # Un-normalize action input from outside and apply low-pass filter to changes
         # self.u = self.lowpassfilter.apply_lowpass(self.unnormalize_input(action), self.u)
-        self.u = self.unnormalize_input(action)
+        # self.u = self.unnormalize_input(action)
+        self.u = action # bug fixed ,why?
         self._sim(nu_c)
 
     def _sim(self, nu_c: np.ndarray) -> None:
