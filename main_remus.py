@@ -78,7 +78,7 @@ if __name__ == "__main__":
                             env_config=used_TRAIN_CONFIG,
                             timesteps_per_save=100000,
                             model_load_path=None,
-                            vector_env=16, )
+                            vector_env=16 , )
     else:
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training
