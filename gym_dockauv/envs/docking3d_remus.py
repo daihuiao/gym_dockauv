@@ -11,6 +11,7 @@ from typing import Tuple, Optional, Union
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
+import wandb
 from gym.utils import seeding
 
 from gym_dockauv.config.env_config import BASE_CONFIG
@@ -96,6 +97,7 @@ class BaseDocking3d_remus(gym.Env):
         # Navigation errors
         self.delta_d = 0
         self.delta_psi = 0
+        self.delta_psi_ = 0
         self.delta_theta = 0
         self.delta_heading_goal = 0  # This is the error for the heading that is required AT goal
 
@@ -103,7 +105,7 @@ class BaseDocking3d_remus(gym.Env):
         self.current = Current(mu=0.005, V_min=0.0, V_max=0.0, Vc_init=0.0,
                                alpha_init=np.pi / 4, beta_init=np.pi / 4, white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude,position=self.auv.position)
+        self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
 
         # Init radar sensor suite
         self.radar_args = self.config["radar"]
@@ -116,10 +118,12 @@ class BaseDocking3d_remus(gym.Env):
         self.obstacles = [*self.capsules, *self.spheres()]  # type: list[shape.Shape]
 
         # Set the action and observation space
-        self.n_obs_without_radar = 16
+        self.bounding_box = self.config["bounding_box"]
+        self.n_obs_without_radar = 16 + 3
         self.n_observations = self.n_obs_without_radar + self.radar.n_rays_reduced
         self.action_space = gym.spaces.Box(low=self.auv.u_bound[:, 0],
-                                           high=self.auv.u_bound[:, 1],
+                                           high=np.concatenate(
+                                               (self.auv.u_bound[:, 1][0:-1], np.array([env_config["thruster"]]))),
                                            dtype=np.float32)
         # Except for delta distance and rays, observation is between -1 and 1
         obs_low = -np.ones(self.n_observations)
@@ -224,6 +228,9 @@ class BaseDocking3d_remus(gym.Env):
         logger.info('---------- Rewards function description ----------')
         logger.info(self.reward_step.__doc__)
 
+    def trajectory_in_current(self, position,prefix=None):
+        self.current.trajectory_in_current(position,prefix)
+
     def reset(self, seed: Optional[int] = None,
               return_info: bool = False,
               options: Optional[dict] = None,
@@ -289,7 +296,7 @@ class BaseDocking3d_remus(gym.Env):
                                alpha_init=np.pi / 4, beta_init=np.pi / 4, white_noise_std=0.0,
                                step_size=self.auv.step_size)
         # self.nu_c = self.current(self.auv.attitude)
-        self.nu_c = self.current(self.auv.attitude,position=self.auv.position)
+        self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
 
         # Radar reset:
         self.radar.reset(self.auv.eta)
@@ -297,10 +304,7 @@ class BaseDocking3d_remus(gym.Env):
         # Obstacles reset
         self.obstacles = []
 
-        # Navigation errors
-        self.delta_d = 0
-        self.delta_psi = 0
-        self.delta_theta = 0
+
 
         # Update the seed:
         if seed is not None:
@@ -318,7 +322,19 @@ class BaseDocking3d_remus(gym.Env):
 
         # ----------- Init for new environment from here on -----------
         # Generate environment
+        """
+        attention
+        """
         self.generate_environment()
+
+        # Navigation errors
+        diff = self.goal_location - self.auv.position
+        # self.delta_d 表示的是 AUV 与目标位置之间的距离
+        self.delta_d = np.linalg.norm(diff)
+        self.last_delta_d = np.linalg.norm(diff)
+        # self.delta_d = 0
+        self.delta_psi = 0
+        self.delta_theta = 0
 
         # Init whole episode data if interval is met, or we need it for the renderer
         if self.episode % self.interval_datastorage == 0 or self.episode == 1:
@@ -357,12 +373,12 @@ class BaseDocking3d_remus(gym.Env):
         # Simulate and update current in body frame
         self.current.sim()
         if True:
-            self.nu_c = self.current(self.auv.attitude,position = self.auv.position)
+            self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
         else:
             self.nu_c = self.current(self.auv.attitude)
 
         # Update AUV dynamics
-        self.auv.step(action, self.current(self.auv.attitude ,position = self.auv.position))
+        self.auv.step(action, self.current(self.auv.attitude, position=self.auv.position))
 
         # Update radar
         self.radar.update(self.auv.eta)
@@ -413,7 +429,8 @@ class BaseDocking3d_remus(gym.Env):
                      "goal_reached": self.goal_reached,
                      # "goal_constraints": self.goal_constraints,
                      "simulation_time": timer() - self.start_time_sim,
-                     "delta_d": self.delta_d}
+                     "delta_d": self.delta_d,
+                     "position": self.auv.position, }
 
         return self.observation, self.last_reward, self.done, self.info
 
@@ -425,17 +442,24 @@ class BaseDocking3d_remus(gym.Env):
         diff = self.goal_location - self.auv.position
         # self.delta_d 表示的是 AUV 与目标位置之间的距离
         self.delta_d = np.linalg.norm(diff)
+        self.delta_distance  =  self.last_delta_d - self.delta_d
+
         # self.delta_theta 表示的是为了从 AUV 的当前位置和姿态移动到目标位置所需改变的俯仰角.ssa:Smallest Signed Angle
         self.delta_theta = self.auv.attitude[1] + (geom.ssa(np.arctan2(diff[2], np.linalg.norm(diff[:2]))))
         # self.delta_psi 表示 AUV 为了朝向目标位置所需做出的偏航角度调整。
         self.delta_psi = geom.ssa(np.arctan2(diff[1], diff[0]) - self.auv.attitude[2])
-        #有一个预设的方向了， self.delta_heading_goal 表示 AUV 为了朝向目标方向所需做出的偏航角度调整。
+        self.delta_psi_ = np.arctan2(diff[1], diff[0]) - self.auv.attitude[2]
+        # 有一个预设的方向了， self.delta_heading_goal 表示 AUV 为了朝向目标方向所需做出的偏航角度调整。
         self.delta_heading_goal = geom.ssa(self.heading_goal_reached - self.auv.attitude[2])
 
-        self.stable_delta_theta = self.auv.attitude[1]-self.auv.last_attitude[1]
+        self.stable_delta_theta = self.auv.attitude[1] - self.auv.last_attitude[1]
 
-        self.distance_moved_per_step = np.linalg.norm(self.auv.position-self.auv.last_position)
+        self.distance_moved_per_step = np.linalg.norm(self.auv.position - self.auv.last_position)
         # haha = 1
+
+
+        self.last_delta_d = self.delta_d
+
 
     def update_radar_collision(self) -> Union[np.ndarray, None]:
         """
@@ -509,6 +533,12 @@ class BaseDocking3d_remus(gym.Env):
         obs[13] = np.clip(self.nu_c[0] / 2, -1, 1)  # Assuming in general current max. speed of 2m/s
         obs[14] = np.clip(self.nu_c[1] / 2, -1, 1)
         obs[15] = np.clip(self.nu_c[2] / 2, -1, 1)
+
+        # ??? 竟然没有添加自身位置到obs里，amazing
+        obs[16] = np.clip(self.auv.position[0] / self.bounding_box[0], -1, 1)
+        obs[17] = np.clip(self.auv.position[1] / self.bounding_box[1], -1, 1)
+        obs[18] = np.clip(self.auv.position[2] / self.bounding_box[2], -1, 1)
+
         obs[self.n_obs_without_radar:] = np.clip(self.radar.intersec_dist_reduced / self.radar.max_dist, 0, 1)
         return obs
 
@@ -571,8 +601,9 @@ class BaseDocking3d_remus(gym.Env):
         if self.reward_set == 1:
             # Set 1
             # self.delta_theta 表示的是为了从 AUV 的当前位置和姿态移动到目标位置所需改变的俯仰角.ssa:Smallest Signed Angle
-            self.last_reward_arr[1] = - self.reward_factors["w_delta_theta"] * (self.delta_theta / (np.pi / 2)) ** 2 #pitch
-            self.last_reward_arr[2] = - self.reward_factors["w_delta_psi"] * (self.delta_psi / np.pi) ** 2 #yaw
+            self.last_reward_arr[1] = - self.reward_factors["w_delta_theta"] * (
+                    self.delta_theta / (np.pi / 2)) ** 2  # pitch
+            self.last_reward_arr[2] = - self.reward_factors["w_delta_psi"] * (self.delta_psi / np.pi) ** 2  # yaw
         elif self.reward_set == 2:
             # Set 2
             self.last_reward_arr[1] = - self.reward_factors["w_delta_theta"] * Reward.cont_goal_constraints(
@@ -601,13 +632,14 @@ class BaseDocking3d_remus(gym.Env):
             )
 
         # Reward for stable attitude
-        #phi 是roll,合理，因为roll是不需要调整的，所以这个奖励是为了让roll保持稳定
-        self.last_reward_arr[3] = -self.reward_factors["w_phi"] * (self.auv.attitude[0]/ (np.pi / 2)) ** 2
-        #todo dai: theta 是pitch，这个合理吗，让他一直保持为0？
-        self.last_reward_arr[4] = -self.reward_factors["w_theta"]* 0 * ((self.auv.attitude[1]-self.auv.last_attitude[1])  / (np.pi / 2)) ** 2
+        # phi 是roll,合理，因为roll是不需要调整的，所以这个奖励是为了让roll保持稳定
+        self.last_reward_arr[3] = -self.reward_factors["w_phi"] * (self.auv.attitude[0] / (np.pi / 2)) ** 2
+        # todo dai: theta 是pitch，这个合理吗，让他一直保持为0？
+        self.last_reward_arr[4] = -self.reward_factors["w_theta"] * 0 * (
+                (self.auv.attitude[1] - self.auv.last_attitude[1]) / (np.pi / 2)) ** 2
 
         self.last_reward_arr[5] = - self.reward_factors["w_Thetadot"] * (
-                    np.linalg.norm(self.auv.euler_dot) / self.p_max) ** 2 #欧拉角是角度，欧拉角的导数是角速度，让角速度尽可能小。
+                np.linalg.norm(self.auv.euler_dot) / self.p_max) ** 2  # 欧拉角是角度，欧拉角的导数是角速度，让角速度尽可能小。
         # Reward function for obstacle avoidance,
 
         if self.reward_set == 1:
@@ -637,7 +669,7 @@ class BaseDocking3d_remus(gym.Env):
             )
 
         self.last_reward_arr[7] = - (np.sum(
-            (np.abs(action) / self.auv.u_bound.shape[0]) ** 2 * self.action_reward_factors*0))
+            (np.abs(action) / self.auv.u_bound.shape[0]) ** 2 * self.action_reward_factors * 0))
 
         # Add extra reward on checking which condition caused the episode to be done (discrete rewards)
         self.last_reward_arr[self.n_cont_rewards:] = np.array(self.conditions) * self.w_done
@@ -648,8 +680,10 @@ class BaseDocking3d_remus(gym.Env):
         reward = float(np.sum(self.last_reward_arr))
 
         velocity_reward = self.reward_factors["w_velocity"] * \
-                  np.linalg.norm(self.auv.ned_velocity[0:2])#todo dai: 这里想用横向上的速度作为奖励，
+                          np.linalg.norm(self.auv.ned_velocity[0:2])  # todo dai: 这里想用横向上的速度作为奖励，
         reward += velocity_reward
+        distance_reward = self.reward_factors["delta_distance"] * self.delta_distance
+        reward += distance_reward
         return reward
 
     def is_done(self) -> Tuple[bool, list]:
@@ -677,9 +711,12 @@ class BaseDocking3d_remus(gym.Env):
         # ]
         self.conditions = [
             # Condition 0: Check if close to the goal
-            self.delta_d < self.dist_goal_reached_tol,
+            self.delta_d < self.dist_goal_reached_tol ,
             # Condition 1: Check if out of bounds for position
-            self.delta_d > self.max_dist_from_goal,
+            # self.delta_d > self.max_dist_from_goal,
+            abs(self.auv.position[0]) > self.bounding_box[0] or
+            abs(self.auv.position[1]) > self.bounding_box[1] or
+            abs(self.auv.position[2]) > self.bounding_box[2],
             # Condition 2: Check if attitude (pitch, roll) too high
             # np.any(np.abs(self.auv.attitude[:2]) > self.max_attitude),
             False,
@@ -688,7 +725,6 @@ class BaseDocking3d_remus(gym.Env):
             # Condition 4: Collision with obstacle (is updated earlier)
             self.collision
         ]
-
 
         # Check if any condition is true
         done = bool(np.any(self.conditions))  # To satisfy environment checker
@@ -699,6 +735,8 @@ class BaseDocking3d_remus(gym.Env):
                 print("Goal reached, steps: ", self.t_steps)
             if self.conditions[2]:
                 print("Attitude too high, steps: ", self.t_steps)
+            indices = np.where(self.conditions)[0]
+            # wandb.log({ "logs/done_condition(0:goal,1:border,3:step,4：collision)": indices[0]})
             # Return also the indexes of which cond is activated
         cond_idx = [i for i, x in enumerate(self.conditions) if x]
         return done, cond_idx
@@ -755,7 +793,7 @@ class BaseDocking3d_remus(gym.Env):
                                                          shapes=[*self.obstacles,
                                                                  shape.Sphere(self.goal_location, 0.15)],
                                                          radar=self.radar, title=self.title,
-                                                         episode=self.episode, env=self)
+                                                         episode=self.episode, env=self,index=self.index)
 
     def generate_random_pos(self, d: float):
         """
@@ -774,6 +812,10 @@ class BaseDocking3d_remus(gym.Env):
                                self.max_attitude * max_att_factor,
                                np.pi])  # Spawn at xx% of max attitude
         return rnd_arr_attitude * att_factor  # Spawn with random attitude
+
+    def yaw_to_target(self):
+        # return self.delta_psi/np.pi*180
+        return self.delta_psi
 
 
 class Reward:
@@ -913,12 +955,13 @@ class SimpleDocking3d_remus(BaseDocking3d_remus):
         # self.auv.position = self.generate_random_pos(d=DISTANCE_FROM_GOAL)
         self.auv.position = np.array([-8, 0.0, 0.0])
         # Attitude
-        self.auv.attitude = self.generate_random_att(max_att_factor=0.7)
+        # self.auv.attitude = self.generate_random_att(max_att_factor=0.7)
+        self.auv.attitude = np.array([0, 0, 0.49 * np.pi])
         # Water current
         self.current = Current(mu=0.005, V_min=0.0, V_max=0.0, Vc_init=0.0,
                                alpha_init=0.0, beta_init=0.0, white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude,position = self.auv.position)
+        self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
         # Obstacles:
         self.obstacles = []
 
@@ -944,7 +987,7 @@ class SimpleCurrentDocking3d_remus(SimpleDocking3d_remus):
         self.current = Current(mu=0.005, V_min=speed, V_max=speed, Vc_init=0.5,
                                alpha_init=curr_angle[0], beta_init=curr_angle[1], white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude,position = self.auv.position)
+        self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
 
 
 class CapsuleDocking3d_remus(SimpleDocking3d_remus):
@@ -1003,7 +1046,7 @@ class CapsuleCurrentDocking3d_remus(CapsuleDocking3d_remus):
         self.current = Current(mu=0.005, V_min=0.5, V_max=0.5, Vc_init=0.5,
                                alpha_init=curr_angle[0], beta_init=curr_angle[1], white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude,position = self.auv.position)
+        self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
 
 
 class ObstaclesDocking3d_remus(CapsuleDocking3d_remus):
@@ -1018,10 +1061,10 @@ class ObstaclesDocking3d_remus(CapsuleDocking3d_remus):
         """
         Set up and environment with multiple capsules as obstacles around the goal location (e.g. a pear or oil rig)
         """
-        CAPSULE_OBSTACLES_RADIUS = 1.0
+        CAPSULE_OBSTACLES_RADIUS = 2.0
         CAPSULE_OBSTACLES_HEIGHT = 2 * self.max_dist_from_goal
         CAPSULE_DISTANCE_FROM_CENTER = 6
-        NUMBER_OF_CAPSULES = 4
+        NUMBER_OF_CAPSULES = 1
 
         # Same setup as before:
         super().generate_environment()
@@ -1030,9 +1073,10 @@ class ObstaclesDocking3d_remus(CapsuleDocking3d_remus):
         new_capsules = []
         theta = np.random.rand() * 2 * np.pi
         for i in range(NUMBER_OF_CAPSULES):
-            x = np.cos(theta) * CAPSULE_DISTANCE_FROM_CENTER
-            y = np.sin(theta) * CAPSULE_DISTANCE_FROM_CENTER
-            theta += 2 * np.pi / NUMBER_OF_CAPSULES
+            # x = np.cos(theta) * CAPSULE_DISTANCE_FROM_CENTER
+            # y = np.sin(theta) * CAPSULE_DISTANCE_FROM_CENTER
+            x = -130.
+            y = 0.
             # Create new capsule and append to list
             new_capsules.append(
                 Capsule(position=np.array([x, y, 0.0]),
@@ -1083,4 +1127,123 @@ class ObstaclesCurrentDocking3d_remus(ObstaclesDocking3d_remus):
         self.current = Current(mu=0.005, V_min=0.5, V_max=0.5, Vc_init=0.5,
                                alpha_init=curr_angle[0], beta_init=curr_angle[1], white_noise_std=0.0,
                                step_size=self.auv.step_size)
-        self.nu_c = self.current(self.auv.attitude)
+        self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
+
+
+# class ObstaclesCurrentDocking3d_remusStartGoal(ObstaclesDocking3d_remus):
+#     """
+#     Set up and environment with multiple capsules as obstacles around the goal location (e.g. a pear or oil rig)
+#     Add water current to it
+#     """
+#
+#     def __init__(self, env_config: dict = BASE_CONFIG):
+#         super().__init__(env_config)
+#         if "goal_point" in env_config:
+#             self.goal_point_ = env_config["goal_point"]
+#         else:
+#             raise NotImplementedError
+#         if "start_point" in env_config:
+#             self.start_point_ = env_config["start_point"]
+#
+#     def generate_environment(self):
+#         """
+#         Set up an environment after each reset call, can be used to in multiple environments to make multiple scenarios
+#         """
+#         # Same setup as before:
+#         super().generate_environment()
+#         # Water current
+#         curr_angle = (np.random.random(2) - 0.5) * 2 * np.array([np.pi / 2, np.pi])  # Water current direction
+#         self.current = Current(mu=0.005, V_min=0.5, V_max=0.5, Vc_init=0.5,
+#                                alpha_init=curr_angle[0], beta_init=curr_angle[1], white_noise_std=0.0,
+#                                step_size=self.auv.step_size)
+#         self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
+#
+#         self.goal_location = self.goal_point_
+#         self.auv.position = self.start_point_
+#         # Attitude
+#         # self.auv.attitude = self.generate_random_att(max_att_factor=0.7)
+
+
+class ObstaclesCurrentDocking3d_remusStartGoal(BaseDocking3d_remus):
+    """
+    Set up and environment with multiple capsules as obstacles around the goal location (e.g. a pear or oil rig)
+    Add water current to it
+    """
+
+    def __init__(self, env_config: dict = BASE_CONFIG):
+        super().__init__(env_config)
+        if "goal_point" in env_config:
+            self.goal_point_ = env_config["goal_point"]
+        else:
+            raise NotImplementedError
+        if "start_point" in env_config:
+            self.start_point_ = env_config["start_point"]
+
+    def generate_environment(self):
+        """
+        Set up an environment after each reset call, can be used to in multiple environments to make multiple scenarios
+        """
+        # Same setup as before:
+        # super().generate_environment()
+        # Water current
+        curr_angle = (np.random.random(2) - 0.5) * 2 * np.array([np.pi / 2, np.pi])  # Water current direction
+        self.current = Current(mu=0.005, V_min=0.5, V_max=0.5, Vc_init=0.5,
+                               alpha_init=curr_angle[0], beta_init=curr_angle[1], white_noise_std=0.0,
+                               step_size=self.auv.step_size)
+        self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
+
+        self.goal_location = self.goal_point_
+        self.auv.position = self.start_point_
+        # Attitude
+        # self.auv.attitude = self.generate_random_att(max_att_factor=0.7)
+        self.auv.attitude = np.array([0, 0, 0.49 * np.pi])
+
+
+        ###########
+        CAPSULE_RADIUS = 1.0
+        CAPSULE_HEIGHT = 4.0
+        # Obstacles (only the capsule at goal location):
+        cap = Capsule(position=np.array([0.0, 0.0, 0.0]),
+                      radius=CAPSULE_RADIUS,
+                      vec_top=np.array([0.0, 0.0, -CAPSULE_HEIGHT / 2.0]))
+        self.capsules = [cap]
+        self.obstacles = [*self.capsules]
+        # Get vector pointing from goal location to capsule:
+        vec = shape.vec_line_point(self.goal_location, cap.vec_top, cap.vec_bot)
+        # Calculate heading at goal
+        self.heading_goal_reached = geom.ssa(np.arctan2(vec[1], vec[0]))
+        ###########
+
+
+        ######
+        CAPSULE_OBSTACLES_RADIUS = 2.0
+        CAPSULE_OBSTACLES_HEIGHT = 2 * self.max_dist_from_goal
+        CAPSULE_DISTANCE_FROM_CENTER = 6
+        NUMBER_OF_CAPSULES = 1
+        # Generate new capsules
+        new_capsules = []
+        theta = np.random.rand() * 2 * np.pi
+        for i in range(NUMBER_OF_CAPSULES):
+            # x = np.cos(theta) * CAPSULE_DISTANCE_FROM_CENTER
+            # y = np.sin(theta) * CAPSULE_DISTANCE_FROM_CENTER
+            x = -130.
+            y = 0.
+            # Create new capsule and append to list
+            new_capsules.append(
+                Capsule(position=np.array([x, y, 0.0]),
+                        radius=CAPSULE_OBSTACLES_RADIUS,
+                        vec_top=np.array([x, y, -CAPSULE_OBSTACLES_HEIGHT / 2.0]))
+            )
+        # Add Obstacles:
+        self.capsules.extend(new_capsules)
+        self.obstacles.extend(new_capsules)
+        ######
+
+
+
+
+
+
+
+
+

@@ -21,7 +21,9 @@ REGISTRATION_DICT = {
     "CapsuleCurrentDocking3d_remus-v0": "gym_dockauv.envs:CapsuleCurrentDocking3d_remus",
     "ObstaclesDocking3d_remus-v0": "gym_dockauv.envs:ObstaclesDocking3d_remus",
     "ObstaclesCurrentDocking3d_remus-v0": "gym_dockauv.envs:ObstaclesCurrentDocking3d_remus",
-    "ObstaclesNoCapDocking3d_remus-v0": "gym_dockauv.envs:ObstaclesNoCapDocking3d_remus"
+    "ObstaclesNoCapDocking3d_remus-v0": "gym_dockauv.envs:ObstaclesNoCapDocking3d_remus",
+
+    "ObstaclesCurrentDocking3d_remusStartGoal-v0": "gym_dockauv.envs:ObstaclesCurrentDocking3d_remusStartGoal"
 }
 
 # ---------- Base Config for all other possible configs ----------
@@ -34,11 +36,11 @@ BASE_CONFIG = {
     "verbose": 1,                           # If logs should also appear in output console, either 0 or 1
 
     # ---------- EPISODE ----------
-    "max_timesteps": 1000,                   # Maximum amount of timesteps before episode ends
+    "max_timesteps": 5000,                   # Maximum amount of timesteps before episode ends
 
     # ---------- SIMULATION --------------
     "t_step_size": 0.10,                    # Length of each simulation timestep [s]
-    "interval_datastorage": 100,            # Interval of episodes on which extended data is saved through data class
+    "interval_datastorage": 1,            # Interval of episodes on which extended data is saved through data class
     "interval_episode_log": 50,             # Log the episode info dict in specific interval into the log file
     "save_path_folder": os.path.join(os.getcwd(), "logs"),  # Folder name where all result files will be stored
 
@@ -145,6 +147,62 @@ TRAIN_CONFIG_remus["reward_factors"] = {
 
         "w_velocity": 1.0,                  # Discrete: encourage high velocity
     }
+#----------- 卡门涡阶的训练配置
+
+TRAIN_CONFIG_remus_Karman = copy.deepcopy(BASE_CONFIG)
+TRAIN_CONFIG_remus_Karman["title"] = "Training Run"
+TRAIN_CONFIG_remus_Karman["save_path_folder"] = os.path.join(os.getcwd(), "logs")
+"""
+        last_reward_arr[0]与目标点有关
+        【1】【2】是调整朝向，也和目标点有关
+        【3】【4】是约束roll和pitch为0
+        【5】是约束角速度为0
+        【6】是避障奖励
+        [7] 限制动作幅度
+        【8】-【13】是结束奖励，到达目标给奖励，其余给惩罚
+                Condition 0: Check if close to the goal 400
+                Condition 1: Check if out of bounds for position -200
+                Condition 2: Check if attitude (pitch, roll) too high
+                Condition 3: Check if maximum time steps reached
+                Condition 4: Check for collision
+"""
+TRAIN_CONFIG_remus_Karman["reward_factors"] = {
+    # Reward factors / weights in dictionary
+
+        "w_d": 1.1*1,                         # Continuous: distance from goal
+        "w_delta_psi": 0.0,                 # Continuous: chi error (heading)
+        "w_delta_theta": 0.0,               # Continuous: delta_theta error (elevation)
+
+        "w_phi": 0.3,                       # Continuous: phi(roll) error (roll angle)
+        "w_theta": 0.0,                     # Continuous: theta(pitch) error (pitch angle)
+
+        "w_Thetadot": 0.0,                  # Continuous: total angular rate
+        # "w_delta_psi_g": 0.5,               # Continuous: heading at goal location
+
+        "w_oa": 0.20,                        # Continuous: obstacle avoidance parameter
+
+        "w_goal": 400.0,                    # Discrete: reaching goal
+        "w_deltad_max": -200.0,             # Discrete: Flying out of bounds
+        # "w_Theta_max": -200.0,              # Discrete: Too high attitude
+        "w_Theta_max": -0.0,              # Discrete: Too high attitude
+        "w_t_max": -100.0,                  # Discrete: Episode maximum length over
+        "w_col": -300.0,                    # Discrete: Collision factor
+
+        "w_velocity": 0.0,                  # Discrete: encourage high velocity
+        "delta_distance":0.0,
+    }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ---------- Configuration for Prediction runs ----------

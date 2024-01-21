@@ -1,8 +1,10 @@
+import copy
 from pathlib import Path
 
 from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_TEST, SAC_HYPER_PARAMS_TEST
 from stable_baselines3 import A2C, PPO, DDPG, SAC
-
+from gym_dockauv.config.env_config import PREDICT_CONFIG, MANUAL_CONFIG, TRAIN_CONFIG, REGISTRATION_DICT,TRAIN_CONFIG_remus_Karman
+import gym
 from gym_dockauv.config.env_config import TRAIN_CONFIG
 # import gym_dockauv.train as train
 from gym_dockauv.utils.datastorage import EpisodeDataStorage
@@ -13,21 +15,36 @@ mpl.rcParams["axes.titlesize"] = 18
 mpl.rcParams["axes.labelsize"] = 14
 mpl.rcParams["xtick.labelsize"] = 12
 mpl.rcParams["ytick.labelsize"] = 12
+def make_gym(gym_env: str, env_config: dict):
+    """
+    Wrapper to create and return gym and return error if key is wrong
+
+    :param gym_env: Registration string of gym from docking3d env
+    :param env_config: Config for environment
+    :return:
+    """
+    if gym_env in REGISTRATION_DICT:
+        env = gym.make(gym_env, env_config=env_config)
+        return env
+    else:
+        raise KeyError(f"Not valid gym environment registration string,"
+                       f" available options are {REGISTRATION_DICT.keys()}")
 
 
+GYM_ENV = ["ObstaclesCurrentDocking3d_remus-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
+MODELS = [
+    SAC,
+    PPO,
+]
+MODELS_STR = [
+    "_SAC",
+    "_PPO",
+]
+HYPER_PARAMS = [
+    SAC_HYPER_PARAMS_TEST,
+    PPO_HYPER_PARAMS_TEST,
+]
 
-GYM_ENV = ["SimpleDocking3d_remus-v0", "CapsuleDocking3d_remus-v0", "ObstaclesNoCapDocking3d_remus-v0", "ObstaclesDocking3d_remus-v0"]
-# MODELS = [PPO, SAC]
-# MODELS_STR = ["_PPO", "_SAC"]
-# HYPER_PARAMS = [PPO_HYPER_PARAMS_TEST, SAC_HYPER_PARAMS_TEST]
-
-
-
-# GYM_ENV = ["SimpleCurrentDocking3d-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
-# GYM_ENV = ["SimpleDocking3d_remus-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
-MODELS = [SAC]
-MODELS_STR = [ "_SAC"]
-HYPER_PARAMS = [SAC_HYPER_PARAMS_TEST]
 if __name__ == "__main__":
     TRAIN_CONFIG["vehicle"] = "remus100"
     # if True:
@@ -62,11 +79,28 @@ if __name__ == "__main__":
     else:
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training
-        prefix = "/home/ps/dai/overall/togithub/gym_dockauv" \
-                 "/logs/SimpleDocking3d_remus-v0_SAC_3"
-        epi_stor = EpisodeDataStorage()
-        epi_stor.load(
-            file_name=prefix+"/Training Run__EPISODE_10000.pkl")
+        for i in range(1,20):
+            for j in range(0,1):
+                prefix = "/home/ps/dai/overall/togithub/gym_dockauv" \
+                         "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0_SAC_21"
+                         # "/logs"
+                epi_stor = EpisodeDataStorage()
+                epi_stor.load(
+                    file_name=prefix+f"/Training Run__EPISODE_{i}__process_{j}.pkl")
+
+                # used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
+                used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
+                used_TRAIN_CONFIG["vehicle"] = "remus100"
+                start_point = [-100, -80, 0]
+                goal_point = [-100, 80, 0]
+                used_TRAIN_CONFIG["start_point"] = start_point
+                used_TRAIN_CONFIG["goal_point"] = goal_point
+                used_TRAIN_CONFIG["bounding_box"] = [260, 90, 200]
+                used_TRAIN_CONFIG["thruster"] = 500
+
+                env = make_gym(gym_env=GYM_ENV[0], env_config=used_TRAIN_CONFIG)  # type: BaseDocking3d
+                env.trajectory_in_current(epi_stor.positions,prefix=prefix+f"/fig_episode_{i}_process{j}")
+
         epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)
 
     # # Training for one model and one environment

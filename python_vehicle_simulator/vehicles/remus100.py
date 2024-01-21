@@ -246,7 +246,6 @@ class remus100:
         船尾平面（Stern-plane），有时也称为潜艇的水平尾翼，用于控制船舶的俯仰运动，即上升和下降。
         它们位于船舶尾部的上下位置，并可以上下摆动，通过改变水流的垂直方向来控制船舶的深度。
         """
-#todo dai 默认这里的nu_c是0,如果想要加入水流的影响，需要在这里加入水流的影响，把下面的洋流替换，nu_c=[0,0,0,0,0,0]
         # Current velocities
         # u_c = self.V_c * math.cos(self.beta_c - eta[5])  # current surge velocity
         # v_c = self.V_c * math.sin(self.beta_c - eta[5])  # current sway velocity

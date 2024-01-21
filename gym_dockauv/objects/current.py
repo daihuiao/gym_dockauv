@@ -1,7 +1,7 @@
 import numpy as np
 
 from ..utils import geomutils as geom
-from .genenate_current import generate_current
+from .genenate_current import Karmen_current
 
 
 class Current:
@@ -31,8 +31,12 @@ class Current:
         self.white_noise_std = white_noise_std
         self.step_size = step_size
         self.current_scale = current_scale
-
-    def __call__(self, Theta: np.ndarray,position=None) -> np.ndarray:
+        self.karmen_current = Karmen_current()
+        if self.karmen_current.draw:
+            self.karmen_current.draw_current()
+        Karmen_current.draw = False
+#todo dai 洋流已关闭
+    def __call__(self, Theta: np.ndarray,position=None,return_None = False) -> np.ndarray:
         r"""
         Returns the current velocity :math:`\boldsymbol{\nu}_c` in {b} for the AUV when called
 
@@ -55,12 +59,16 @@ class Current:
         else:
 
             # vel_current_NED = self.get_current_NED()
-            vel_current_NED = self.current_scale * generate_current(position[0], position[1], position[2], 0)
+            vel_current_NED = self.current_scale * self.karmen_current.generate_current(position[0], position[1], position[2], 0)
+            # vel_current_NED = np.array([0,0,0])
             vel_current_BODY = np.transpose(geom.Rzyx(phi, theta, psi)).dot(vel_current_NED)
 
             nu_c = np.array([*vel_current_BODY, 0, 0, 0])
+        # if return_None:
+        #     return np.array([0,0,0,0,0,0])
         return nu_c
-
+    def trajectory_in_current(self,position,prefix):
+        self.karmen_current.trajectory_in_current(position,prefix)
     def get_current_NED(self) -> np.ndarray:
         r"""
         Returns current in NED coordinates

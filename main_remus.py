@@ -1,10 +1,14 @@
 import copy
 from pathlib import Path
 
+import numpy as np
+
+import wandb
+
 from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_TEST, SAC_HYPER_PARAMS_TEST
 from stable_baselines3 import A2C, PPO, DDPG, SAC
 
-from gym_dockauv.config.env_config import TRAIN_CONFIG,TRAIN_CONFIG_remus
+from gym_dockauv.config.env_config import TRAIN_CONFIG,TRAIN_CONFIG_remus,TRAIN_CONFIG_remus_Karman
 import gym_dockauv.train as train
 from gym_dockauv.utils.datastorage import EpisodeDataStorage
 import matplotlib as mpl
@@ -31,7 +35,8 @@ mpl.rcParams["ytick.labelsize"] = 12
 # ]
 
 # GYM_ENV = ["SimpleCurrentDocking3d-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
-GYM_ENV = ["SimpleDocking3d_remus-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
+# GYM_ENV = ["SimpleDocking3d_remus-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
+GYM_ENV = ["ObstaclesCurrentDocking3d_remusStartGoal-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
 MODELS = [
     SAC,
     PPO,
@@ -45,9 +50,39 @@ HYPER_PARAMS = [
     PPO_HYPER_PARAMS_TEST,
 ]
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--wandb_mode', type=str, default='online')
+    args = parser.parse_args()
+
     # used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
-    used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus)
+    used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
     used_TRAIN_CONFIG["vehicle"] = "remus100"
+    start_point = [-10,-8,0]
+    goal_point = [-10,8,0]
+    used_TRAIN_CONFIG["start_point"] = start_point
+    used_TRAIN_CONFIG["goal_point"] = goal_point
+    used_TRAIN_CONFIG["bounding_box"] = [26,9,20]
+    used_TRAIN_CONFIG["thruster"] = 500
+    #计算二范数
+    used_TRAIN_CONFIG["max_dist_from_goal"] = np.linalg.norm(np.array(goal_point)-np.array(start_point))
+    used_TRAIN_CONFIG["dist_goal_reached_tol"] = 0.05*np.linalg.norm(np.array(goal_point)-np.array(start_point))
+    used_TRAIN_CONFIG["max_timesteps"] = 1000
+
+    wandb.init(project="洋流助力",
+               entity="aohuidai",
+               # mode=args.wandb_mode,
+               mode="online",
+               group="卡门我届",
+               # name="点到点",
+               config=used_TRAIN_CONFIG,
+
+               sync_tensorboard=True,
+               # magic=True,
+               save_code=True,
+               # settings=settings,
+               # notes="把熵给改回去了，再跑一个看看",
+               )
     if True:
         # if False:
         # ---------- TRAINING ----------
@@ -69,7 +104,7 @@ if __name__ == "__main__":
                 used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", curr_run)
 
                 train.train(gym_env=GYM,
-                            total_timesteps=10000000,
+                            total_timesteps=3000000,
                             MODEL=MODEL,
                             model_save_path="logs/" + curr_run + "/" + GYM + MODELS_STR[K],
                             tb_log_name=curr_run,
@@ -78,7 +113,9 @@ if __name__ == "__main__":
                             env_config=used_TRAIN_CONFIG,
                             timesteps_per_save=100000,
                             model_load_path=None,
-                            vector_env=16 , )
+                            # vector_env=16 , )
+                            vector_env=None , )
+                            # vector_env=1 , )
     else:
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training

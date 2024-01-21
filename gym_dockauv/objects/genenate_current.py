@@ -5,130 +5,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from mpl_toolkits.mplot3d import Axes3D
-
-# Set the size of the grid
-grid_size_x = 200
-grid_size_y = 200
-grid_size_z = 200
-
-x = np.linspace(-10, 10, grid_size_x)
-y = np.linspace(-10, 10, grid_size_y)
-z = np.linspace(-5, 5, grid_size_z)
-X, Y, Z = np.meshgrid(x, y, z)
-
-xx = np.linspace(-20.0, 20.0, grid_size_x)  #
-yy = np.linspace(-20.0, 20.0, grid_size_y)
-zz = np.linspace(-20.0, 20.0, grid_size_z)
-# xx = np.linspace(-119.25 - 0.009650 * 2, -119.25 + 0.009650 * 2, grid_size_x)#
-# yy = np.linspace(-21.5 - 0.009030 * 2, -21.5 + 0.009030 * 2, grid_size_y)
-# zz = np.linspace(-500, 0, grid_size_z)
-XX, YY, ZZ = np.meshgrid(xx, yy, zz)
-
-# Define the parabola
-A = np.array([-4, 0])  # Point A
-B = np.array([4, 0])  # Point B
-parabola = lambda x: 0.25 * (x - A[0]) * (x - B[0])  # Parabolic function
-
-# Calculate the ocean current vector field in 3D
-U = np.zeros_like(X)
-V = np.zeros_like(Y)
-W = np.zeros_like(Z)  # No vertical flow component
-if False:
-# if True:
-    for i in range(grid_size_x):
-        for j in range(grid_size_y):
-            for k in range(grid_size_z):
-                # Distance from the point to the parabola (ignoring the z-coordinate)
-                distance = np.abs(Y[i, j, k] - parabola(X[i, j, k]))
-
-                # Direction of the current (derivative of the parabola, ignoring z)
-                direction = np.array([1, 0.5 * (X[i, j, k] - A[0] + X[i, j, k] - B[0])])
-                direction /= np.linalg.norm(direction)
-
-                # Magnitude of the current decreases with distance from the parabola
-                magnitude = (0.5 + k / grid_size_z) * np.exp(-distance) + 0.3
-                if magnitude > 1:
-                    # raise ValueError("Magnitude is too large")
-                    magnitude = 1
-                # Calculate the vector components
-                U[i, j, k] = 1*magnitude * direction[0]
-                V[i, j, k] = 1*magnitude * direction[1]
-
-    with open("current.pkl", "wb") as f:
-        import pickle
-
-        pickle.dump([U, V, W], f)
-else:
-    with open("current.pkl", "rb") as f:
-        import pickle
-        U, V, W = pickle.load(f)
-
-
-skip = (slice(None, None, 20), slice(None, None, 20), slice(None, None, 200))
-
-if False:
-# if True:
-    # Create the 3D plot
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Plot the current arrows
-    ax.quiver(XX[skip], YY[skip], ZZ[skip],
-              U[skip],
-              V[skip],
-              W[skip],
-              # length=np.sqrt(U[skip]**2+V[skip]**2+W[skip]**2), color='blue')
-              length=np.linalg.norm([U[skip], V[skip], W[skip]]), color='blue')
-
-    # # Plot points A and B, and the parabolic path
-    # ax.scatter(*A, color='red', s=100, label='Point A')
-    # ax.scatter(*B, color='green', s=100, label='Point B')
-    # # ax.plot(parabola[:,0], parabola[:,1], parabola[:,2], color='orange', label='Parabolic Path')
-    # parabola_3d = np.array([[x, parabola(x), 0] for x in np.linspace(A[0], B[0], 100)])
-    # ax.plot(parabola_3d[:, 0], parabola_3d[:, 1], parabola_3d[:, 2], color='orange', label='Parabolic Path')
-
-    # Set labels and title
-    ax.set_xlabel('X Axis')
-    ax.set_ylabel('Y Axis')
-    ax.set_zlabel('Z Axis')
-    ax.set_title('3D Ocean Current Matrix')
-    ax.legend()
-    # Show the plot
-    plt.show()
-elif False:
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
-    curve_len =2
-    # 遍历每个点并绘制从该点出发的线段
-    for i in range(0, grid_size_x, 20):
-        for j in range(0, grid_size_y, 20):
-            # for k in range(0, grid_size_z, 200):
-            for k in [99]:
-                # 线段的起点
-                start_point = [XX[i, j, k], YY[i, j, k], ZZ[i, j, k]]
-
-                # 线段的终点
-                end_point = [XX[i, j, k] + curve_len * U[i, j, k],
-                             YY[i, j, k] + curve_len * V[i, j, k],
-                             ZZ[i, j, k] + curve_len * W[i, j, k]]
-
-                # 绘制线段
-                ax.plot([start_point[0], end_point[0]],
-                        [start_point[1], end_point[1]],
-                        [start_point[2], end_point[2]],
-                        color='blue')
-
-    # 设置标签和标题
-    ax.set_xlabel('X Axis')
-    ax.set_ylabel('Y Axis')
-    ax.set_zlabel('Z Axis')
-    ax.set_title('3D Ocean Current Matrix')
-
-    plt.show()
-
-lon = xx
-lat = yy
-alt = zz
+import copy
+import timeit
+import numpy as np
+import numpy.linalg as nplin
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from numpy.polynomial.polynomial import polyfit
+import plotly.figure_factory as ff
 
 
 def find_nearest_index(array, value):
@@ -139,56 +23,123 @@ def find_nearest_index(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
-#todo dai 改了一天的bug，把y放到了x的位置，x放到了y的位置，为什么呀，正不明白阿！！！！！😎
-def generate_current( input_y, input_x,input_z, t):  # longitude (经度), latitude (纬度), altitude (海拔)。
-    # try:
-    #     assert bool(float(input_x) > float(lon.min()))
-    #     assert bool(float(input_x) < float(lon.max()))
-    #     assert bool(float(input_y) > float(lat.min()))
-    #     assert bool(float(input_y) < float(lat.max()))
-    #     assert bool(float(input_z) > float(alt.min()))
-    #     assert bool(float(input_z) < float(alt.max()))
-    # except:
-    #     print("输入的经纬度不在范围内")
-    #
-    #     print("_lon:", input_x, "lon.min:", lon.min(), "lon.max:", lon.max())
-    #     print("_lat:", input_y, "lat.min:", lat.min(), "lat.max:", lat.max())
-    #     print("_alt:", input_z, "alt.min:", alt.min(), "alt.max:", alt.max())
+if_draw = False
 
-    # 哪个更快？
-    #time1 4.00543212890625e-05
-    # time2 2.1457672119140625e-05
-    #amazing
+class Karmen_current():
+    draw = True
+    def __init__(self,range_x=26,range_y=9,range_z=20,start_point=[-10,-8],goal_point=[-10,8]):
+        self.start_point = start_point
+        self.goal_point = goal_point
+        self.range_x = range_x
+        self.range_y = range_y
+        self.range_z = range_z
+        # Set the size of the grid
+        self.grid_size_x = 2*range_x
+        self.grid_size_y = 2*range_y
+        self.grid_size_z = 2*range_z
 
-    # t = time.time()
-    ind_x = sum(input_x >= lon) - 1
-    ind_y = sum(input_y >= lat) - 1
-    ind_z = sum(input_z >= alt) - 1
-    u = U[ind_x, ind_y, ind_z]
-    v = V[ind_x, ind_y, ind_z]
-    w = W[ind_x, ind_y, ind_z]
-    # print("time1", time.time() - t)
+        self.xx = np.linspace(-range_x, range_x, self.grid_size_x)  #
+        self.yy = np.linspace(-range_y, range_y, self.grid_size_y)
+        self.zz = np.linspace(-range_z, range_z, self.grid_size_z)
+        self.XX, self.YY, self.ZZ = np.meshgrid(self.xx, self.yy, self.zz)
 
-    # # t = time.time()
-    # nearest_x_idx = find_nearest_index(lon, input_x)
-    # nearest_y_idx = find_nearest_index(lat, input_y)
-    # nearest_z_idx = find_nearest_index(alt, input_z)
-    #
-    # # Retrieve the ocean current vector at this grid point
-    # u = U[nearest_x_idx, nearest_y_idx, nearest_z_idx]
-    # v = V[nearest_x_idx, nearest_y_idx, nearest_z_idx]
-    # w = W[nearest_x_idx, nearest_y_idx, nearest_z_idx]
-    # # print("time2", time.time() - t)
+        with open("/home/ps/dai/overall/togithub/gym_dockauv/karmen.pkl", "rb") as f:
+            import pickle
+            self.Us = pickle.load(f)
+            # Create streamline figure
+        self.u = 10 * copy.deepcopy(self.Us[450])
+        self.U = self.u[0, :, :].transpose()
+        self.V = self.u[1, :, :].transpose()
 
-    return np.array([u, v, w])
+        # Coordinates of the circular obstacle
+        self.cx = 2 * range_x / 4
+        self.cy = 2 * range_y / 2
+        self.r = 2 * range_y / 9
 
-#测试生成的洋流
-if False:
+    def draw_current(self):
+        if False:
+        # if True:
+            w = self.u[0, :, :].transpose()
+            v = self.u[1, :, :].transpose()
+            x = np.arange(0, self.grid_size_x,self.grid_size_x/w.shape[1])
+            y = np.arange(0, self.grid_size_y,self.grid_size_y/v.shape[0])
+            circle = plt.Circle((self.cx, self.cy), self.r, color='blue')
+            fig, ax = plt.subplots()
+            ax.add_artist(circle)
+            d = 2
+            plt.streamplot(x, y, w, v, density=d, linewidth=1 / d, arrowsize=1 / d)
+            ax.set_aspect('equal')
+            plt.savefig('streamlines.png', bbox_inches='tight', dpi=20)
+            plt.show()
+
+            plt.imshow(np.sqrt(self.u[0] ** 2 + self.u[1] ** 2).transpose(),
+                       cmap=cm.Greens)  # 5 Purples, Re26 YlGn, Re65 Blues, Re220 Reds.
+            # print(Iter)
+            # plt.savefig("vel."+str(Iter/100).zfill(4)+".png", bbox_inches='tight', dpi=200)
+            plt.show()
+
+    def trajectory_in_current(self,positon,prefix):
+
+        w = self.u[0, :, :].transpose()
+        v = self.u[1, :, :].transpose()
+        x = np.arange(0-self.grid_size_x/2, 0+self.grid_size_x/2,self.grid_size_x/w.shape[1])
+        y = np.arange(0-self.grid_size_y/2, 0+self.grid_size_y/2,self.grid_size_y/v.shape[0])
+        circle = plt.Circle((self.cx-self.grid_size_x/2, self.cy-self.grid_size_y/2), self.r, color='blue')
+        fig, ax = plt.subplots()
+        ax.add_artist(circle)
+        d = 2
+        plt.streamplot(x, y, w, v, density=d, linewidth=1 / d, arrowsize=1 / d)
+        ax.set_aspect('equal')
+        ax.plot(np.array(positon)[:,0], np.array(positon)[:,1])
+        plt.scatter(self.start_point[0],self.start_point[1],c="r")
+        plt.scatter(self.goal_point[0],self.goal_point[1],c="g")
+        if prefix is None:
+            plt.show()
+        else:
+            plt.savefig(prefix, bbox_inches='tight', dpi=200)
+        # plt.show()
+        plt.cla()
+        # ax.plot(np.array(positon)[:,0], np.array(positon)[:,1])
+
+        # plt.imshow(np.sqrt(self.u[0] ** 2 + self.u[1] ** 2).transpose(),
+        #            cmap=cm.Greens)  # 5 Purples, Re26 YlGn, Re65 Blues, Re220 Reds.
+        # # print(Iter)
+        # # plt.savefig("vel."+str(Iter/100).zfill(4)+".png", bbox_inches='tight', dpi=200)
+        # plt.show()
+    def generate_current(self,input_x, input_y, input_z, t):  # longitude (经度), latitude (纬度), altitude (海拔)。
+        try:
+            assert bool(float(input_x) > float(self.xx.min()))
+            assert bool(float(input_x) < float(self.xx.max()))
+            assert bool(float(input_y) > float(self.yy.min()))
+            assert bool(float(input_y) < float(self.yy.max()))
+            assert bool(float(input_z) > float(self.zz.min()))
+            assert bool(float(input_z) < float(self.zz.max()))
+        except:
+            print("输入的经纬度不在范围内")
+
+            print("_lon:", input_x, "lon.min:", self.xx.min(), "lon.max:", self.xx.max())
+            print("_lat:", input_y, "lat.min:", self.yy.min(), "lat.max:", self.yy.max())
+            print("_alt:", input_z, "alt.min:", self.zz.min(), "alt.max:", self.zz.max())
+
+        ind_x = sum(input_x >= self.xx) - 1
+        ind_y = sum(input_y >= self.yy) - 1
+        u = self.U[ind_y, ind_x]
+        v = self.V[ind_y, ind_x]
+        w = 0
+
+        return np.array([u, v, w])
+
+
+
+
+
+if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import numpy as np
+    karmen_current = Karmen_current()
     # 创建 x 和 y 的网格
-    x_ = np.arange(-20, 21, 2)
-    y_ = np.arange(-20, 21, 2)
+    x_ = np.arange(-karmen_current.range_x, karmen_current.range_x, 5)
+    y_ = np.arange(-karmen_current.range_y, karmen_current.range_y, 5)
     X_, Y_ = np.meshgrid(x_, y_)
 
     # 初始化 u 和 v 来存储洋流速度的 x 和 y 分量
@@ -196,15 +147,25 @@ if False:
     atest_V = np.zeros_like(Y_,dtype=np.float)
 
     # 遍历所有点并计算洋流速度
+    max = 0
+    max_point = [0, 0]
+    strange_current  = []
     for i in range(X_.shape[0]):
         for j in range(X_.shape[1]):
             position = (X_[i, j], Y_[i, j], 0)  # z 始终为 0
-            current = generate_current(*position, 0)
+            current = karmen_current.generate_current(*position, 0)
+            if np.linalg.norm(position - np.array([-karmen_current.cx, 0, 0])) < karmen_current.r:
+                strange_current.append(current)
+                current = np.array([0, 0, 0])
+
+            if np.linalg.norm(current) > max:
+                max = np.linalg.norm(current)
+                max_point = position
             atest_U[i, j] = current[0]
             atest_V[i, j] = current[1]
 
     plt.figure(figsize=(10, 10))
-
+    point_len = 10
     # 遍历所有点并绘制洋流速度
     for i in range(X_.shape[0]):
         for j in range(X_.shape[1]):
@@ -212,24 +173,21 @@ if False:
             start_point = [X_[i, j], Y_[i, j]]
 
             # 线段的终点（表示洋流方向和大小）
-            end_point = [X_[i, j] + atest_U[i, j], Y_[i, j] + atest_V[i, j]]
+            end_point = [X_[i, j] + point_len * atest_U[i, j], Y_[i, j] + point_len * atest_V[i, j]]
 
             # 绘制线段
             plt.plot([start_point[0], end_point[0]],
                      [start_point[1], end_point[1]],
                      color='blue')
-
+    plt.axis('equal')
     # 添加标签和标题
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.title('Current Velocity Field')
     plt.grid(True)
+
     plt.show()
 
     haha = True
 
 
-# # 维度1000米： 180*1000/math.pi/6371000
-# # 中心（0，0）：-21.5  -119.25  0.009030   0.009650
-# # （1000，1000）： -21.49095781898798  -119.24035303257898
-# # （-1000，-1000）： -21.5090178878837987  -119.25965219008972

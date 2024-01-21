@@ -99,7 +99,7 @@ def train(gym_env: str,
         model.save(tmp_model_save_path)
         logger.info(f'Successfully saved model: {os.path.join(os.path.join(os.getcwd(), tmp_model_save_path))}')
 
-    env.save_full_data_storage()
+    # env.save_full_data_storage()
     return None
 
 
