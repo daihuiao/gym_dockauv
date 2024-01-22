@@ -344,7 +344,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         )
 
         callback.on_training_start(locals(), globals())
-        tqdm_bar = tqdm(total=total_timesteps, desc="Training", unit=" steps",ncols=80)
+        tqdm_bar = tqdm(total=total_timesteps, desc="Training", unit=" steps",ncols=100)
         while self.num_timesteps < total_timesteps:
             rollout = self.collect_rollouts(
                 self.env,
@@ -581,6 +581,8 @@ class OffPolicyAlgorithm(BaseAlgorithm):
 
             # Rescale and perform action
             new_obs, rewards, dones, infos = env.step(actions)
+            for key ,value in  infos[0]["reward_useful"].items():
+                wandb.log({"rewards/"+key:value})
             wandb.log({"logs/action": actions[0][2]})
             self.num_timesteps += env.num_envs
             num_collected_steps += 1

@@ -173,13 +173,15 @@ TRAIN_CONFIG_remus_Karman["reward_factors"] = {
         "w_delta_psi": 0.0,                 # Continuous: chi error (heading)
         "w_delta_theta": 0.0,               # Continuous: delta_theta error (elevation)
 
-        "w_phi": 0.3,                       # Continuous: phi(roll) error (roll angle)
+        "w_phi": 0.0,                       # Continuous: phi(roll) error (roll angle)
+        # "w_phi": 0.3,                       # Continuous: phi(roll) error (roll angle)
         "w_theta": 0.0,                     # Continuous: theta(pitch) error (pitch angle)
 
         "w_Thetadot": 0.0,                  # Continuous: total angular rate
         # "w_delta_psi_g": 0.5,               # Continuous: heading at goal location
 
-        "w_oa": 0.20,                        # Continuous: obstacle avoidance parameter
+        "w_oa": 0.0,                        # Continuous: obstacle avoidance parameter
+        # "w_oa": 0.20,                        # Continuous: obstacle avoidance parameter
 
         "w_goal": 400.0,                    # Discrete: reaching goal
         "w_deltad_max": -200.0,             # Discrete: Flying out of bounds
@@ -189,7 +191,8 @@ TRAIN_CONFIG_remus_Karman["reward_factors"] = {
         "w_col": -300.0,                    # Discrete: Collision factor
 
         "w_velocity": 0.0,                  # Discrete: encourage high velocity
-        "delta_distance":0.0,
+        "delta_distance":10.0,
+        "thruster_penalty":0.0,
     }
 
 

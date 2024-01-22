@@ -20,8 +20,8 @@ class Current:
     """
 
     def __init__(self, mu: float, V_min: float, V_max: float, Vc_init: float, alpha_init: float, beta_init: float,
-                 white_noise_std: float, step_size: float, current_scale: float=1.0):
-
+                 white_noise_std: float, step_size: float, current_on: bool, current_scale: float = 1.0):
+        self.current_on = current_on
         self.mu = mu
         self.V_min = V_min
         self.V_max = V_max
@@ -35,8 +35,9 @@ class Current:
         if self.karmen_current.draw:
             self.karmen_current.draw_current()
         Karmen_current.draw = False
-#todo dai 洋流已关闭
-    def __call__(self, Theta: np.ndarray,position=None,return_None = False) -> np.ndarray:
+
+    # todo dai 洋流已关闭
+    def __call__(self, Theta: np.ndarray, position=None, return_None=False) -> np.ndarray:
         r"""
         Returns the current velocity :math:`\boldsymbol{\nu}_c` in {b} for the AUV when called
 
@@ -59,16 +60,20 @@ class Current:
         else:
 
             # vel_current_NED = self.get_current_NED()
-            vel_current_NED = self.current_scale * self.karmen_current.generate_current(position[0], position[1], position[2], 0)
-            # vel_current_NED = np.array([0,0,0])
+            if self.current_on:
+                vel_current_NED = self.current_scale * self.karmen_current.generate_current(position[0], position[1], position[2], 0)
+            else:
+                vel_current_NED = np.array([0, 0, 0])
             vel_current_BODY = np.transpose(geom.Rzyx(phi, theta, psi)).dot(vel_current_NED)
 
             nu_c = np.array([*vel_current_BODY, 0, 0, 0])
         # if return_None:
         #     return np.array([0,0,0,0,0,0])
         return nu_c
-    def trajectory_in_current(self,position,prefix):
-        self.karmen_current.trajectory_in_current(position,prefix)
+
+    def trajectory_in_current(self, position, prefix):
+        self.karmen_current.trajectory_in_current(position, prefix)
+
     def get_current_NED(self) -> np.ndarray:
         r"""
         Returns current in NED coordinates

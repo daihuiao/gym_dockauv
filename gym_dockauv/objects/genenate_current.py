@@ -90,7 +90,7 @@ class Karmen_current():
         d = 2
         plt.streamplot(x, y, w, v, density=d, linewidth=1 / d, arrowsize=1 / d)
         ax.set_aspect('equal')
-        ax.plot(np.array(positon)[:,0], np.array(positon)[:,1])
+        ax.plot(np.array(positon)[:,0], np.array(positon)[:,1],c="orange")
         plt.scatter(self.start_point[0],self.start_point[1],c="r")
         plt.scatter(self.goal_point[0],self.goal_point[1],c="g")
         if prefix is None:

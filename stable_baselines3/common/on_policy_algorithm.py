@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import gym
 import numpy as np
 import torch as th
+from tqdm import tqdm
 
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
@@ -171,9 +172,17 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             # Rescale and perform action
             clipped_actions = actions
-            # Clip the actions to avoid out of bound error
+
             if isinstance(self.action_space, gym.spaces.Box):
-                clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
+                # if self.policy.squash_output:
+                if True:
+                    # Unscale the actions to match env bounds
+                    # if they were previously squashed (scaled in [-1, 1])
+                    clipped_actions = self.policy.unscale_action(clipped_actions)
+                else:
+                    # Otherwise, clip the actions to avoid out of bound error
+                    # as we are sampling from an unbounded Gaussian distribution
+                    clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
 
             new_obs, rewards, dones, infos = env.step(clipped_actions)
 
@@ -244,10 +253,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         )
 
         callback.on_training_start(locals(), globals())
+        tqdm_bar = tqdm(total=total_timesteps, desc="Training", unit=" steps",ncols=100)
 
         while self.num_timesteps < total_timesteps:
 
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
+            tqdm_bar.update(self.n_steps * self.n_envs)
 
             if continue_training is False:
                 break

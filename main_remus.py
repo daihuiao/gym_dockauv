@@ -38,15 +38,15 @@ mpl.rcParams["ytick.labelsize"] = 12
 # GYM_ENV = ["SimpleDocking3d_remus-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
 GYM_ENV = ["ObstaclesCurrentDocking3d_remusStartGoal-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
 MODELS = [
-    SAC,
+    # SAC,
     PPO,
 ]
 MODELS_STR = [
-    "_SAC",
+    # "_SAC",
     "_PPO",
 ]
 HYPER_PARAMS = [
-    SAC_HYPER_PARAMS_TEST,
+    # SAC_HYPER_PARAMS_TEST,
     PPO_HYPER_PARAMS_TEST,
 ]
 if __name__ == "__main__":
@@ -104,7 +104,7 @@ if __name__ == "__main__":
                 used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", curr_run)
 
                 train.train(gym_env=GYM,
-                            total_timesteps=3000000,
+                            total_timesteps=10000000,
                             MODEL=MODEL,
                             model_save_path="logs/" + curr_run + "/" + GYM + MODELS_STR[K],
                             tb_log_name=curr_run,

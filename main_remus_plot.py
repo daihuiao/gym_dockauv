@@ -5,6 +5,7 @@ from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_TEST, SAC_HYPER_
 from stable_baselines3 import A2C, PPO, DDPG, SAC
 from gym_dockauv.config.env_config import PREDICT_CONFIG, MANUAL_CONFIG, TRAIN_CONFIG, REGISTRATION_DICT,TRAIN_CONFIG_remus_Karman
 import gym
+# import gymnasium as gym
 from gym_dockauv.config.env_config import TRAIN_CONFIG
 # import gym_dockauv.train as train
 from gym_dockauv.utils.datastorage import EpisodeDataStorage
@@ -79,10 +80,10 @@ if __name__ == "__main__":
     else:
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training
-        for i in range(1,20):
+        for i in range(1,500):
             for j in range(0,1):
                 prefix = "/home/ps/dai/overall/togithub/gym_dockauv" \
-                         "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0_SAC_21"
+    "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0ppo_continuous_action_34"
                          # "/logs"
                 epi_stor = EpisodeDataStorage()
                 epi_stor.load(
