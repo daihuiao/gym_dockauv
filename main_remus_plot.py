@@ -80,10 +80,11 @@ if __name__ == "__main__":
     else:
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training
-        for i in range(1,500):
+        for i in range(70,500):
             for j in range(0,1):
                 prefix = "/home/ps/dai/overall/togithub/gym_dockauv" \
-    "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0ppo_continuous_action_34"
+    "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0_SAC_2"
+    # "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0ppo_continuous_action_50"
                          # "/logs"
                 epi_stor = EpisodeDataStorage()
                 epi_stor.load(
@@ -92,17 +93,17 @@ if __name__ == "__main__":
                 # used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
                 used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
                 used_TRAIN_CONFIG["vehicle"] = "remus100"
-                start_point = [-100, -80, 0]
-                goal_point = [-100, 80, 0]
+                start_point = [-0, -100, 0]
+                goal_point = [-0, 100, 0]
                 used_TRAIN_CONFIG["start_point"] = start_point
                 used_TRAIN_CONFIG["goal_point"] = goal_point
-                used_TRAIN_CONFIG["bounding_box"] = [260, 90, 200]
+                used_TRAIN_CONFIG["bounding_box"] = [260, 90*2, 200]
                 used_TRAIN_CONFIG["thruster"] = 500
 
                 env = make_gym(gym_env=GYM_ENV[0], env_config=used_TRAIN_CONFIG)  # type: BaseDocking3d
                 env.trajectory_in_current(epi_stor.positions,prefix=prefix+f"/fig_episode_{i}_process{j}")
 
-        epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)
+                epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)
 
     # # Training for one model and one environment
     # train.train(gym_env=GYM_ENV[0],

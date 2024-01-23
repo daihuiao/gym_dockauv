@@ -1,7 +1,6 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_actionpy
-import copy
-import os
-import logging
+
+
 
 from huggingface_hub.utils import tqdm
 
@@ -41,21 +40,25 @@ import matplotlib as mpl
 import os
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
+
+os.environ["WANDB_API_KEY"] = "b4fdd4e5e894cba0eda9610de6f9f04b87a86453"
+
 # used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
 used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
 used_TRAIN_CONFIG["vehicle"] = "remus100"
-start_point = [-10, -8, 0]
-goal_point = [-10, 8, 0]
+start_point = [-0, -10, 0]
+goal_point = [-0, 10, 0]
 used_TRAIN_CONFIG["start_point"] = start_point
 used_TRAIN_CONFIG["goal_point"] = goal_point
-used_TRAIN_CONFIG["bounding_box"] = [26, 9, 20]
-used_TRAIN_CONFIG["thruster"] = 500
+used_TRAIN_CONFIG["bounding_box"] = [26, 18, 20]
+used_TRAIN_CONFIG["thruster"] = 1500
 # 计算二范数
 used_TRAIN_CONFIG["max_dist_from_goal"] = np.linalg.norm(np.array(goal_point) - np.array(start_point))
 used_TRAIN_CONFIG["dist_goal_reached_tol"] = 0.05 * np.linalg.norm(np.array(goal_point) - np.array(start_point))
 used_TRAIN_CONFIG["max_timesteps"] = 1000
 
-
+def asymmetric_l2_loss(u, tau):
+    return torch.mean(torch.abs(tau - (u < 0).float()) * u**2)
 
 
 @dataclass
@@ -86,7 +89,7 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "ObstaclesCurrentDocking3d_remusStartGoal-v0"
     """the id of the environment"""
-    total_timesteps: int = 10000000
+    total_timesteps: int = 1000000
     """total timesteps of the experiments"""
     learning_rate: float = 3e-4
     """the learning rate of the optimizer"""
@@ -128,6 +131,7 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
     current_on: bool = False
+    tau: float = 0.5
 
 used_TRAIN_CONFIG["current_on"] = Args.current_on
 
@@ -210,14 +214,15 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    # run_name = f"{args.env_id.split()}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"tau:{args.tau}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
 
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            group="cleanrl",
+            group="cleanrl"+"_tau:"+str(args.tau),
             sync_tensorboard=True,
             config=vars(args).update(used_TRAIN_CONFIG),
             name=run_name,
@@ -236,7 +241,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    device = torch.device("cuda:1" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
     # envs = gym.vector.SyncVectorEnv(
@@ -288,12 +293,12 @@ if __name__ == "__main__":
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
-                action = low + (0.5 * (action + 1.0) * (high - low))
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
+            action = low + (0.5 * (action + 1.0) * (high - low))
             next_obs, reward, terminations,  infos = envs.step(action.cpu().numpy())
             # for i in range(args.num_envs):
             #     if terminations[i]:
@@ -308,6 +313,9 @@ if __name__ == "__main__":
                     # print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     writer.add_scalar("charts/episodic_return", infos[i]["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", infos[i]["episode"]["l"], global_step)
+            indices = np.where(infos[0]["conditions_true"])
+            if len(indices[0]) > 0:
+                wandb.log({ "logs/done_condition(0:goal,1:border,3:step,4：collision)": indices[0][0]})
 
         # bootstrap value if not done
         with torch.no_grad():
@@ -370,7 +378,7 @@ if __name__ == "__main__":
                         -args.clip_coef,
                         args.clip_coef,
                     )
-                    v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
+                    v_loss_clipped = asymmetric_l2_loss (v_clipped - b_returns[mb_inds], args.tau)
                     v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                     v_loss = 0.5 * v_loss_max.mean()
                 else:

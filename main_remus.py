@@ -38,15 +38,15 @@ mpl.rcParams["ytick.labelsize"] = 12
 # GYM_ENV = ["SimpleDocking3d_remus-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
 GYM_ENV = ["ObstaclesCurrentDocking3d_remusStartGoal-v0",] # "SimpleDocking3d-v0",  "CapsuleDocking3d-v0", "ObstaclesNoCapDocking3d-v0", "ObstaclesDocking3d-v0"]
 MODELS = [
-    # SAC,
+    SAC,
     PPO,
 ]
 MODELS_STR = [
-    # "_SAC",
+    "_SAC",
     "_PPO",
 ]
 HYPER_PARAMS = [
-    # SAC_HYPER_PARAMS_TEST,
+    SAC_HYPER_PARAMS_TEST,
     PPO_HYPER_PARAMS_TEST,
 ]
 if __name__ == "__main__":
@@ -58,12 +58,12 @@ if __name__ == "__main__":
     # used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
     used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
     used_TRAIN_CONFIG["vehicle"] = "remus100"
-    start_point = [-10,-8,0]
-    goal_point = [-10,8,0]
+    start_point = [-0,-10,0]
+    goal_point = [-0,10,0]
     used_TRAIN_CONFIG["start_point"] = start_point
     used_TRAIN_CONFIG["goal_point"] = goal_point
-    used_TRAIN_CONFIG["bounding_box"] = [26,9,20]
-    used_TRAIN_CONFIG["thruster"] = 500
+    used_TRAIN_CONFIG["bounding_box"] = [26,18,20]
+    used_TRAIN_CONFIG["thruster"] = 1500
     #计算二范数
     used_TRAIN_CONFIG["max_dist_from_goal"] = np.linalg.norm(np.array(goal_point)-np.array(start_point))
     used_TRAIN_CONFIG["dist_goal_reached_tol"] = 0.05*np.linalg.norm(np.array(goal_point)-np.array(start_point))
@@ -113,8 +113,8 @@ if __name__ == "__main__":
                             env_config=used_TRAIN_CONFIG,
                             timesteps_per_save=100000,
                             model_load_path=None,
-                            # vector_env=16 , )
-                            vector_env=None , )
+                            vector_env=16 , )
+                            # vector_env=None , )
                             # vector_env=1 , )
     else:
         # ---------- VIDEO GENERATION ----------

@@ -827,7 +827,7 @@ class BaseDocking3d_remus(gym.Env):
                                                                  shape.Sphere(self.goal_location, 0.15)],
                                                          radar=self.radar, title=self.title,
                                                          episode=self.episode, env=self,
-                                                         # index=self.index
+                                                         index=self.index
                                                          )
 
     def generate_random_pos(self, d: float):

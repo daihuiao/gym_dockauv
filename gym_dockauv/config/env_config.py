@@ -169,7 +169,7 @@ TRAIN_CONFIG_remus_Karman["save_path_folder"] = os.path.join(os.getcwd(), "logs"
 TRAIN_CONFIG_remus_Karman["reward_factors"] = {
     # Reward factors / weights in dictionary
 
-        "w_d": 1.1*1,                         # Continuous: distance from goal
+        "w_d": 0,                         # Continuous: distance from goal
         "w_delta_psi": 0.0,                 # Continuous: chi error (heading)
         "w_delta_theta": 0.0,               # Continuous: delta_theta error (elevation)
 
