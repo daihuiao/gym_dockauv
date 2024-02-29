@@ -1,6 +1,8 @@
 import copy
 from pathlib import Path
 
+import numpy as np
+
 from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_TEST, SAC_HYPER_PARAMS_TEST
 from stable_baselines3 import A2C, PPO, DDPG, SAC
 from gym_dockauv.config.env_config import PREDICT_CONFIG, MANUAL_CONFIG, TRAIN_CONFIG, REGISTRATION_DICT,TRAIN_CONFIG_remus_Karman
@@ -80,15 +82,19 @@ if __name__ == "__main__":
     else:
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training
-        for i in range(70,500):
+        for i in range(1,500):
             for j in range(0,1):
                 prefix = "/home/ps/dai/overall/togithub/gym_dockauv" \
-    "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0_SAC_2"
+    "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0ppo_continuous_action_20"
     # "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0ppo_continuous_action_50"
                          # "/logs"
                 epi_stor = EpisodeDataStorage()
                 epi_stor.load(
                     file_name=prefix+f"/Training Run__EPISODE_{i}__process_{j}.pkl")
+                position = epi_stor.positions
+                distance_moved = [np.linalg.norm(position[i+1]-position[i]) for i in range(len(position)-1)]
+                print("total_distance_moved", sum(distance_moved))
+                print("total_distance_moved/t", sum(distance_moved)/(0.1*len(position)))
 
                 # used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
                 used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
@@ -103,7 +109,7 @@ if __name__ == "__main__":
                 env = make_gym(gym_env=GYM_ENV[0], env_config=used_TRAIN_CONFIG)  # type: BaseDocking3d
                 env.trajectory_in_current(epi_stor.positions,prefix=prefix+f"/fig_episode_{i}_process{j}")
 
-                epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)
+        epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)
 
     # # Training for one model and one environment
     # train.train(gym_env=GYM_ENV[0],

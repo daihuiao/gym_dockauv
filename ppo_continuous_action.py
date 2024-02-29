@@ -1,7 +1,6 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_actionpy
 
 
-
 from huggingface_hub.utils import tqdm
 
 from gym_dockauv.utils.datastorage import EpisodeDataStorage, FullDataStorage
@@ -33,32 +32,18 @@ import wandb
 from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_TEST, SAC_HYPER_PARAMS_TEST
 # from stable_baselines3 import A2C, PPO, DDPG, SAC
 
-from gym_dockauv.config.env_config import TRAIN_CONFIG,TRAIN_CONFIG_remus,TRAIN_CONFIG_remus_Karman
+from gym_dockauv.config.env_config import TRAIN_CONFIG, TRAIN_CONFIG_remus, TRAIN_CONFIG_remus_Karman
 import gym_dockauv.train as train
 from gym_dockauv.utils.datastorage import EpisodeDataStorage
 import matplotlib as mpl
 import os
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
-
 os.environ["WANDB_API_KEY"] = "b4fdd4e5e894cba0eda9610de6f9f04b87a86453"
 
-# used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
-used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
-used_TRAIN_CONFIG["vehicle"] = "remus100"
-start_point = [-0, -10, 0]
-goal_point = [-0, 10, 0]
-used_TRAIN_CONFIG["start_point"] = start_point
-used_TRAIN_CONFIG["goal_point"] = goal_point
-used_TRAIN_CONFIG["bounding_box"] = [26, 18, 20]
-used_TRAIN_CONFIG["thruster"] = 1500
-# 计算二范数
-used_TRAIN_CONFIG["max_dist_from_goal"] = np.linalg.norm(np.array(goal_point) - np.array(start_point))
-used_TRAIN_CONFIG["dist_goal_reached_tol"] = 0.05 * np.linalg.norm(np.array(goal_point) - np.array(start_point))
-used_TRAIN_CONFIG["max_timesteps"] = 1000
 
 def asymmetric_l2_loss(u, tau):
-    return torch.mean(torch.abs(tau - (u < 0).float()) * u**2)
+    return torch.mean(torch.abs(tau - (u < 0).float()) * u ** 2)
 
 
 @dataclass
@@ -73,7 +58,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "洋流助力"
+    wandb_project_name: str = "洋流助力_thruster___"
     """the wandb's project name"""
     wandb_entity: str = "aohuidai"
     """the entity (team) of wandb's project"""
@@ -130,26 +115,15 @@ class Args:
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
 
-    current_on: bool = False
+    current_on: bool = True
     tau: float = 0.5
 
-used_TRAIN_CONFIG["current_on"] = Args.current_on
+    w_velocity: float = 1
+    delta_distance: float = 10
+    thruster_penalty: float = 0.1
 
 
-used_TRAIN_CONFIG["title"] = "Training Run"
-log_dir = os.path.join(os.getcwd(), "logs/")
-log_dir = Path(log_dir)
-file_name_prefix = Args.env_id + "ppo_continuous_action"
-exst_run_nums = [int(str(folder.name).split(file_name_prefix)[1].split("_")[1]) for folder in
-                 log_dir.iterdir() if
-                 str(folder.name).startswith(file_name_prefix)]
-if len(exst_run_nums) == 0:
-    curr_run = file_name_prefix + "_" + '1'
-else:
-    curr_run = file_name_prefix + "_" + '%i' % (max(exst_run_nums) + 1)
-used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", curr_run)
-
-def make_env(env_id, index, capture_video, run_name, gamma,env_config):
+def make_env(env_id, index, capture_video, run_name, gamma, env_config):
     def thunk():
         env_config_ = copy.deepcopy(env_config)
         env_config_["index"] = index
@@ -209,22 +183,62 @@ class Agent(nn.Module):
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
 
 
+# used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
+used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
+used_TRAIN_CONFIG["vehicle"] = "remus100"
+start_point = [-0, -10, 0]
+goal_point = [-0, 10, 0]
+used_TRAIN_CONFIG["start_point"] = start_point
+used_TRAIN_CONFIG["goal_point"] = goal_point
+used_TRAIN_CONFIG["bounding_box"] = [26, 18, 20]
+used_TRAIN_CONFIG["thruster"] = 1000
+# 计算二范数
+used_TRAIN_CONFIG["max_dist_from_goal"] = np.linalg.norm(np.array(goal_point) - np.array(start_point))
+used_TRAIN_CONFIG["dist_goal_reached_tol"] = 0.05 * np.linalg.norm(np.array(goal_point) - np.array(start_point))
+used_TRAIN_CONFIG["max_timesteps"] = 1000
+
+used_TRAIN_CONFIG["title"] = "Training Run"
+
+log_dir = os.path.join(os.getcwd(), "logs/")
+log_dir = Path(log_dir)
+file_name_prefix = Args.env_id + "ppo_continuous_action"
+exst_run_nums = [int(str(folder.name).split(file_name_prefix)[1].split("_")[1]) for folder in
+                 log_dir.iterdir() if
+                 str(folder.name).startswith(file_name_prefix)]
+if len(exst_run_nums) == 0:
+    curr_run = file_name_prefix + "_" + '1'
+else:
+    curr_run = file_name_prefix + "_" + '%i' % (max(exst_run_nums) + 1)
+
 if __name__ == "__main__":
     args = tyro.cli(Args)
+
+    used_TRAIN_CONFIG["current_on"] = args.current_on
+    used_TRAIN_CONFIG["reward_factors"]["w_velocity"] = args.w_velocity
+    used_TRAIN_CONFIG["reward_factors"]["thruster_penalty"] = args.thruster_penalty
+
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
     # run_name = f"{args.env_id.split()}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    run_name = f"tau:{args.tau}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    # run_name = f"tau:{args.tau}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"tau:{args.tau}_currentOn:{args.current_on}_w_velocity:{args.w_velocity}" \
+               f"_thruster:{args.thruster_penalty}_{args.seed}__{int(time.time())}"
+    # used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", curr_run)
+    used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", run_name)
+
+    print("current:",args.current_on)
     if args.track:
         import wandb
 
+        my_config = vars(args)
+        my_config.update(used_TRAIN_CONFIG)
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            group="cleanrl"+"_tau:"+str(args.tau),
+            group="cleanrl" + "_tau:" + str(args.tau),
             sync_tensorboard=True,
-            config=vars(args).update(used_TRAIN_CONFIG),
+            config=my_config,
             name=run_name,
             monitor_gym=True,
             save_code=True,
@@ -247,7 +261,8 @@ if __name__ == "__main__":
     # envs = gym.vector.SyncVectorEnv(
     #     [make_env(args.env_id, i, args.capture_video, run_name, args.gamma,used_TRAIN_CONFIG) for i in range(args.num_envs)]
     # )
-    envs =  [make_env(args.env_id, i, args.capture_video, run_name, args.gamma,used_TRAIN_CONFIG) for i in range(args.num_envs)]
+    envs = [make_env(args.env_id, i, args.capture_video, run_name, args.gamma, used_TRAIN_CONFIG) for i in
+            range(args.num_envs)]
     envs = SubprocVecEnv(envs)
     # envs.num_envs = args.num_envs
     envs.single_action_space = envs.action_space
@@ -270,7 +285,7 @@ if __name__ == "__main__":
     global_step = 0
     start_time = time.time()
     # next_obs, _ = envs.reset(seed=args.seed)
-    next_obs= envs.reset()
+    next_obs = envs.reset()
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     low, high = torch.tensor(envs.action_space.low).to(device), torch.tensor(envs.action_space.high).to(device)
@@ -299,11 +314,11 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             action = low + (0.5 * (action + 1.0) * (high - low))
-            next_obs, reward, terminations,  infos = envs.step(action.cpu().numpy())
+            next_obs, reward, terminations, infos = envs.step(action.cpu().numpy())
             # for i in range(args.num_envs):
             #     if terminations[i]:
             #         next_obs[i] = envs.reset(i)
-            truncations =False
+            truncations = False
             next_done = np.logical_or(terminations, truncations)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
@@ -313,9 +328,19 @@ if __name__ == "__main__":
                     # print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     writer.add_scalar("charts/episodic_return", infos[i]["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", infos[i]["episode"]["l"], global_step)
+
+                    writer.add_scalar("thruster/thruster", infos[i]["thruster"], global_step)
+                    writer.add_scalar("thruster/thruster_square", infos[i]["thruster_square"], global_step)
+                    writer.add_scalar("thruster/thruster_mean", infos[i]["thruster"] / infos[i]["episode"]["l"],
+                                      global_step)
+                    writer.add_scalar("charts/total_distance_moved",infos[i]["total_distance_moved"],global_step)
+                    writer.add_scalar("charts/velocity=total_distance_moved/t",infos[i]["total_distance_moved"]/ (0.1*infos[i]["episode"]["l"]),global_step)
             indices = np.where(infos[0]["conditions_true"])
             if len(indices[0]) > 0:
-                wandb.log({ "logs/done_condition(0:goal,1:border,3:step,4：collision)": indices[0][0]})
+                try:
+                    wandb.log({"logs/done_condition(0:goal,1:border,3:step,4：collision)": indices[0][0]})
+                except:
+                    pass
 
         # bootstrap value if not done
         with torch.no_grad():
@@ -378,7 +403,7 @@ if __name__ == "__main__":
                         -args.clip_coef,
                         args.clip_coef,
                     )
-                    v_loss_clipped = asymmetric_l2_loss (v_clipped - b_returns[mb_inds], args.tau)
+                    v_loss_clipped = asymmetric_l2_loss(v_clipped - b_returns[mb_inds], args.tau)
                     v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                     v_loss = 0.5 * v_loss_max.mean()
                 else:

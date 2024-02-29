@@ -43,10 +43,7 @@ class Karmen_current():
         self.grid_size_y = 2 * range_y
         self.grid_size_z = 2 * range_z
 
-        self.xx = np.linspace(-range_x, range_x, self.grid_size_x)  #
-        self.yy = np.linspace(-range_y, range_y, self.grid_size_y)
-        self.zz = np.linspace(-range_z, range_z, self.grid_size_z)
-        self.XX, self.YY, self.ZZ = np.meshgrid(self.xx, self.yy, self.zz)
+
         project_path = pathlib.Path(__file__).parent.parent.parent.parent.__str__()
 
         # with open("/home/ps/dai/overall/togithub/gym_dockauv/karmen_520_180.pkl", "rb") as f:
@@ -57,6 +54,11 @@ class Karmen_current():
         self.u = 10 * copy.deepcopy(self.Us[current_index])
         self.U = self.u[0, :, :].transpose()
         self.V = self.u[1, :, :].transpose()
+
+        self.xx = np.linspace(-range_x, range_x, self.U.shape[1])  #
+        self.yy = np.linspace(-range_y, range_y, self.U.shape[0])
+        self.zz = np.linspace(-range_z, range_z, self.grid_size_z)
+        self.XX, self.YY, self.ZZ = np.meshgrid(self.xx, self.yy, self.zz)
 
         # Coordinates of the circular obstacle
         self.cx = 2 * range_x / 4
@@ -85,35 +87,81 @@ class Karmen_current():
             # plt.savefig("vel."+str(Iter/100).zfill(4)+".png", bbox_inches='tight', dpi=200)
             plt.show()
 
-    def trajectory_in_current(self, positon, prefix):
+    def generate_rainbow_color_scheme(self,color_count):
 
+        import colorsys
+
+        def hsv_to_rgb(h, s, v):
+            r, g, b = colorsys.hsv_to_rgb(h, s, v)
+            # r = int(r )
+            # g = int(g * 255)
+            # b = int(b * 255)
+            return r, g, b
+        # 确定每个色带的步长
+        step = 360 / color_count
+
+        colors = []
+        for i in range(color_count):
+            # 计算当前颜色的色相
+            hue = int(200+(i * step)/360*100)
+            # 将色相转换为RGB值
+            rgb = hsv_to_rgb(hue / 360, 1, 1)
+            # 将RGB值添加到颜色列表中
+            colors.append(rgb)
+
+        return colors
+    def trajectory_in_current(self, position, prefix):
+        import matplotlib.colors as mcolors
+        position_scale  = 1
         w = self.u[0, :, :].transpose()
         v = self.u[1, :, :].transpose()
         x = np.arange(0 - self.grid_size_x / 2, 0 + self.grid_size_x / 2, self.grid_size_x / w.shape[1])
         y = np.arange(0 - self.grid_size_y / 2, 0 + self.grid_size_y / 2, self.grid_size_y / v.shape[0])
-        circle = plt.Circle((self.cx - self.grid_size_x / 2, self.cy - self.grid_size_y / 2), self.r, color='blue')
+        circle = plt.Circle((position_scale * self.cx - position_scale * self.grid_size_x / 2,
+                             position_scale * self.cy - position_scale * self.grid_size_y / 2),
+                            position_scale * self.r, color='blue')
         fig, ax = plt.subplots()
         ax.add_artist(circle)
         d = 2
-        plt.streamplot(x, y, w, v, density=d, linewidth=1 / d, arrowsize=1 / d)
+        plt.streamplot(position_scale*x, position_scale*y, w, v, density=d, linewidth=1 / d, arrowsize=1 / d)
         ax.set_aspect('equal')
-        ax.plot(np.array(positon)[:, 0], np.array(positon)[:, 1], c="orange")
-        plt.scatter(self.start_point[0], self.start_point[1], c="r")
-        plt.scatter(self.goal_point[0], self.goal_point[1], c="g")
-        if prefix is None:
-            pass
+        colors = self.generate_rainbow_color_scheme(len(position))
+        if len(position[0])>5:
+            for i in range(len(position)):
+                position[i] = [position_scale * position[i][j] for j in range(len(position[i]))]
+                color = mcolors.rgb2hex(colors[i])  # 将RGB值转换为十六进制颜色字符串
+                ax.plot(np.array(position[i])[:-10, 0], np.array(position[i])[:-10, 1], color=color)
+                plt.scatter(position[i][0][0], position[i][0][1], c=color)
         else:
+            ax.plot(np.array(position)[:, 0], np.array(position)[:, 1], c="orange")
+            plt.scatter(self.start_point[0], self.start_point[1], c="r")
+            plt.scatter(self.goal_point[0], self.goal_point[1], c="g")
+        plt.savefig("thruster_off.png", bbox_inches='tight', dpi=200)
+        if prefix is None:
             plt.show()
+        else:
             plt.savefig(prefix, bbox_inches='tight', dpi=200)
         # plt.show()
         plt.cla()
-        # ax.plot(np.array(positon)[:,0], np.array(positon)[:,1])
+        plt.clf()
 
-        # plt.imshow(np.sqrt(self.u[0] ** 2 + self.u[1] ** 2).transpose(),
-        #            cmap=cm.Greens)  # 5 Purples, Re26 YlGn, Re65 Blues, Re220 Reds.
-        # # print(Iter)
-        # # plt.savefig("vel."+str(Iter/100).zfill(4)+".png", bbox_inches='tight', dpi=200)
-        # plt.show()
+        if False:
+            fig, ax = plt.subplots()
+            # ax.plot(np.array(positon)[:,0], np.array(positon)[:,1])
+            im = ax.imshow(np.sqrt(self.u[0] ** 2 + self.u[1] ** 2).transpose(),
+                       extent=[-260, 260, -180, 180],cmap=cm.Blues)  # 5 Purples, Re26 YlGn, Re65 Blues, Re220 Reds.
+            ax.set_xlabel('X(m)')
+            ax.set_ylabel('Y(m)')
+            ax.set_xlim(-260, 260)
+            # ax.set_title('Position and Velocity Field')
+            cbar = fig.colorbar(im,shrink=0.7)
+            cbar.set_label('Velocity Magnitude')
+            # ax.legend()
+            # print(Iter)
+            # plt.savefig("vel."+str(Iter/100).zfill(4)+".png", bbox_inches='tight', dpi=200)
+            plt.savefig("Velocity Magnitude.png", bbox_inches='tight', dpi=200)
+            plt.show()
+            haha = True
 
     def generate_current(self, input_x, input_y, input_z, t):  # longitude (经度), latitude (纬度), altitude (海拔)。
         try:

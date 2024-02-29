@@ -76,6 +76,8 @@ BASE_CONFIG = {
         # "w_delta_psi_g": 0.5,               # Continuous: heading at goal location
         "w_t": 0.05,                        # Continuous: constant time step punish
         "w_oa": 0.20,                        # Continuous: obstacle avoidance parameter
+        "action_reward_factors": 6.0,  # reward factor w_{u,i} for action, can be an array matching the number of
+
         "w_goal": 400.0,                    # Discrete: reaching goal
         # Depracated for now, added complexity of very tight goal constraints removed - Erik 30.06.22
         # "w_goal_pdot": 150.0,               # Discrete: reaching goal with certain low speed
@@ -85,8 +87,8 @@ BASE_CONFIG = {
         "w_Theta_max": -200.0,              # Discrete: Too high attitude
         "w_t_max": -100.0,                  # Discrete: Episode maximum length over
         "w_col": -300.0,                    # Discrete: Collision factor
+
     },
-    "action_reward_factors": 6.0,           # reward factor w_{u,i} for action, can be an array matching the number of
                                             # actions or just a scalar multiplied with the normalized sum of the actions
 
     # --------- RADAR -----------  Will be dynamically loaded via **kwargs
@@ -166,36 +168,63 @@ TRAIN_CONFIG_remus_Karman["save_path_folder"] = os.path.join(os.getcwd(), "logs"
                 Condition 3: Check if maximum time steps reached
                 Condition 4: Check for collision
 """
-TRAIN_CONFIG_remus_Karman["reward_factors"] = {
-    # Reward factors / weights in dictionary
+# TRAIN_CONFIG_remus_Karman["reward_factors"] = {
+#     # Reward factors / weights in dictionary
+#
+#         "w_d": 0,                         # Continuous: distance from goal
+#         "w_delta_psi": 0.0,                 # Continuous: chi error (heading)
+#         "w_delta_theta": 0.0,               # Continuous: delta_theta error (elevation)
+#
+#         "w_phi": 0.0,                       # Continuous: phi(roll) error (roll angle)
+#         # "w_phi": 0.3,                       # Continuous: phi(roll) error (roll angle)
+#         "w_theta": 0.0,                     # Continuous: theta(pitch) error (pitch angle)
+#
+#         "w_Thetadot": 0.0,                  # Continuous: total angular rate
+#         # "w_delta_psi_g": 0.5,               # Continuous: heading at goal location
+#
+#         "w_oa": 0.0,                        # Continuous: obstacle avoidance parameter
+#         # "w_oa": 0.20,                        # Continuous: obstacle avoidance parameter
+#
+#         "w_goal": 400.0,                    # Discrete: reaching goal
+#         "w_deltad_max": -200.0,             # Discrete: Flying out of bounds
+#         # "w_Theta_max": -200.0,              # Discrete: Too high attitude
+#         "w_Theta_max": -0.0,              # Discrete: Too high attitude
+#         "w_t_max": -100.0,                  # Discrete: Episode maximum length over
+#         "w_col": -300.0,                    # Discrete: Collision factor
+#
+#         "w_velocity": 0.0,                  # Discrete: encourage high velocity
+#         "delta_distance":10.0,
+#         "thruster_penalty":1.0,
+#     }
 
-        "w_d": 0,                         # Continuous: distance from goal
-        "w_delta_psi": 0.0,                 # Continuous: chi error (heading)
-        "w_delta_theta": 0.0,               # Continuous: delta_theta error (elevation)
-
-        "w_phi": 0.0,                       # Continuous: phi(roll) error (roll angle)
-        # "w_phi": 0.3,                       # Continuous: phi(roll) error (roll angle)
-        "w_theta": 0.0,                     # Continuous: theta(pitch) error (pitch angle)
-
-        "w_Thetadot": 0.0,                  # Continuous: total angular rate
+TRAIN_CONFIG_remus_Karman["reward_factors"] = {  # Reward factors / weights in dictionary
+        "w_d": 1.1,  # Continuous: distance from goal
+        "w_delta_psi": 0.05,  # Continuous: chi error (heading)
+        "w_delta_theta": 0.03,  # Continuous: delta_theta error (elevation)
+        "w_phi": 0.3,  # Continuous: phi error (roll angle)
+        "w_theta": 0.3,  # Continuous: theta error (pitch angle)
+        # Depracated for now, added complexity of very tight goal constraints removed - Erik 30.06.22
+        # "w_pdot": 0.0,                      # Continuous: total speed
+        "w_Thetadot": 0.02,  # Continuous: total angular rate
         # "w_delta_psi_g": 0.5,               # Continuous: heading at goal location
+        # "w_t": 0.05,  # Continuous: constant time step punish
+        "w_oa": 0.0,  # Continuous: obstacle avoidance parameter
+        "action_reward_factors": 0.0,  # reward factor w_{u,i} for action, can be an array matching the number of
 
-        "w_oa": 0.0,                        # Continuous: obstacle avoidance parameter
-        # "w_oa": 0.20,                        # Continuous: obstacle avoidance parameter
+        "w_goal": 400.0,  # Discrete: reaching goal
+        # Depracated for now, added complexity of very tight goal constraints removed - Erik 30.06.22
+        # "w_goal_pdot": 150.0,               # Discrete: reaching goal with certain low speed
+        # "w_goal_Thetadot": 100.0,           # Discrete: Reaching goal with certain low angular rate
+        # "w_goal_delta_psi_g": 150.0,        # Discrete: Reaching goal with certain heading (at e.g. capsule)
+        "w_deltad_max": -200.0,  # Discrete: Flying out of bounds
+        "w_Theta_max": -200.0,  # Discrete: Too high attitude
+        "w_t_max": -100.0,  # Discrete: Episode maximum length over
+        "w_col": -0.0,  # Discrete: Collision factor
 
-        "w_goal": 400.0,                    # Discrete: reaching goal
-        "w_deltad_max": -200.0,             # Discrete: Flying out of bounds
-        # "w_Theta_max": -200.0,              # Discrete: Too high attitude
-        "w_Theta_max": -0.0,              # Discrete: Too high attitude
-        "w_t_max": -100.0,                  # Discrete: Episode maximum length over
-        "w_col": -300.0,                    # Discrete: Collision factor
-
-        "w_velocity": 0.0,                  # Discrete: encourage high velocity
+        "w_velocity": 0.1,                  # Discrete: encourage high velocity
         "delta_distance":10.0,
-        "thruster_penalty":0.0,
+        "thruster_penalty":0.1,
     }
-
-
 
 
 

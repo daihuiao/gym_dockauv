@@ -1,3 +1,4 @@
+import copy
 import datetime
 import importlib
 import logging
@@ -202,7 +203,7 @@ class BaseDocking3d_remus(gym.Env):
             self.reward_factors["w_t_max"],
             self.reward_factors["w_col"]
         ])
-        self.action_reward_factors = self.config["action_reward_factors"]
+        # self.action_reward_factors = self.config["action_reward_factors"]
 
         # Initialize Done condition and related stuff for the done condition
         self.done = False
@@ -260,6 +261,9 @@ class BaseDocking3d_remus(gym.Env):
         .. note:: Options parameter not used yet
         """
         # In case any windows were open from matplotlib or animation
+        self.thruster = 0
+        self.thruster_square = 0
+        self.total_distance_moved= 0
         if self.episode_animation:
             plt.close(self.episode_animation.fig)  # TODO: Window stays open, prob due to Gym
             self.episode_animation = None
@@ -387,6 +391,9 @@ class BaseDocking3d_remus(gym.Env):
         # Update AUV dynamics
         self.auv.step(action, self.current(self.auv.attitude, position=self.auv.position))
 
+        distance_moved = np.linalg.norm(self.auv.position - self.auv.last_position)
+        self.total_distance_moved += distance_moved
+
         # Update radar
         self.radar.update(self.auv.eta)
         i_dist = self.update_radar_collision()
@@ -420,8 +427,10 @@ class BaseDocking3d_remus(gym.Env):
         self.t_total_steps += 1
         self.t_steps += 1
 
-        self.auv.last_attitude = self.auv.attitude
-        self.auv.last_position = self.auv.position
+        self.auv.last_attitude = copy.deepcopy(self.auv.attitude)
+        self.auv.last_position = copy.deepcopy(self.auv.position)
+        self.thruster += action[-1]
+        self.thruster_square += action[-1]**2
 
         # Update info dict
         self.info = {"episode_number": self.episode,  # Need to be episode number, because episode is used by sb3
@@ -440,6 +449,9 @@ class BaseDocking3d_remus(gym.Env):
                      "position": self.auv.position,
                      # "reward_array":reward_array,
                      "reward_useful":reward_useful,
+                        "thruster":self.thruster,
+                     "thruster_square":self.thruster_square,
+                        "total_distance_moved":self.total_distance_moved,
                      }
 
         return self.observation, self.last_reward, self.done, self.info
@@ -679,7 +691,7 @@ class BaseDocking3d_remus(gym.Env):
             )
 
         self.last_reward_arr[7] = - (np.sum(
-            (np.abs(action) / self.auv.u_bound.shape[0]) ** 2 * self.action_reward_factors * 0))
+            (np.abs(action) / self.auv.u_bound.shape[0]) ** 2 * self.reward_factors["action_reward_factors"]))
 
         # Add extra reward on checking which condition caused the episode to be done (discrete rewards)
         self.last_reward_arr[self.n_cont_rewards:self.n_cont_rewards + 5] = np.array(self.conditions) * self.w_done
@@ -698,7 +710,7 @@ class BaseDocking3d_remus(gym.Env):
         self.last_reward_arr[14] = distance_reward
         reward += distance_reward
 
-        thruster_penalty = self.reward_factors["thruster_penalty"] * action[2]/1000.
+        thruster_penalty = -self.reward_factors["thruster_penalty"] * action[2]/1000.
         self.last_reward_arr[15] = thruster_penalty
         reward += thruster_penalty
 
@@ -756,7 +768,8 @@ class BaseDocking3d_remus(gym.Env):
             # Condition 3: Check if maximum time steps reached
             self.t_steps >= self.max_timesteps,
             # Condition 4: Collision with obstacle (is updated earlier)
-            self.collision
+            # self.collision
+            False
         ]
 
         # Check if any condition is true

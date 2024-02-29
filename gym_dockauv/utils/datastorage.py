@@ -245,6 +245,7 @@ class EpisodeDataStorage:
             os.makedirs(path_folder, exist_ok=True)  # Create folder if not exists yet
         # self.file_save_name = os.path.join(path_folder, f"{utc_str}__{title}__EPISODE_{episode}_DATA_STORAGE.pkl")
         self.file_save_name = os.path.join(path_folder, f"{title}__EPISODE_{episode}__process_{index}.pkl")
+        self.index = index
         self.vehicle = vehicle  # Vehicle instance (not a copy, automatically a reference which is updated in reference)
         if shapes is None:
             shapes = []
@@ -325,9 +326,9 @@ class EpisodeDataStorage:
             self.storage["observation"] = self.storage["observation"].get_nparray()
         if self.radar is not None:
             self.storage["radar"] = self.storage["radar"].get_nparray()
-
-        with open(self.file_save_name, 'wb') as outp:  # Overwrites any existing file.
-            pickle.dump(self.storage, outp, pickle.HIGHEST_PROTOCOL)
+        if self.index == 0:
+            with open(self.file_save_name, 'wb') as outp:  # Overwrites any existing file.
+                pickle.dump(self.storage, outp, pickle.HIGHEST_PROTOCOL)
 
         logger.info(f"Successfully saved EpisodeDataStorage at {self.file_save_name}")
 
