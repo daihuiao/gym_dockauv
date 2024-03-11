@@ -225,6 +225,7 @@ TRAIN_CONFIG_remus_Karman["reward_factors"] = {  # Reward factors / weights in d
         "delta_distance":10.0,
         "thruster_penalty":0.1,
     }
+TRAIN_CONFIG_remus_Karman["thruster_min"] = 0.0
 
 
 

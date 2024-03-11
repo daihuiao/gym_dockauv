@@ -71,9 +71,10 @@ class Current:
         #     return np.array([0,0,0,0,0,0])
         return nu_c
 
-    def trajectory_in_current(self, position, prefix):
-        self.karmen_current.trajectory_in_current(position, prefix)
-
+    def trajectory_in_current(self, position, prefix,args=None):
+        self.karmen_current.trajectory_in_current(position, prefix,args=args)
+    def trajectory_in_current_(self, position, prefix,args=None,position1=None,args1=None):
+        self.karmen_current.trajectory_in_current_(position, prefix,args=args,position1=position1,args1=args1)
     def get_current_NED(self) -> np.ndarray:
         r"""
         Returns current in NED coordinates

@@ -130,7 +130,8 @@ class BaseDocking3d_remus(gym.Env):
         self.n_obs_without_radar = 16 + 3
         # self.n_observations = self.n_obs_without_radar + self.radar.n_rays_reduced
         self.n_observations = self.n_obs_without_radar + 0
-        self.action_space = Box(low=self.auv.u_bound[:, 0],
+        self.action_space = Box(low=np.concatenate(
+                                    (self.auv.u_bound[:, 0][0:-1], np.array([env_config["thruster_min"]]))),
                                 high=np.concatenate(
                                     (self.auv.u_bound[:, 1][0:-1], np.array([env_config["thruster"]]))),
                                 dtype=np.float32)
@@ -237,9 +238,10 @@ class BaseDocking3d_remus(gym.Env):
         logger.info('---------- Rewards function description ----------')
         logger.info(self.reward_step.__doc__)
 
-    def trajectory_in_current(self, position, prefix=None):
-        self.current.trajectory_in_current(position, prefix)
-
+    def trajectory_in_current(self, position, prefix=None,args=None):
+        self.current.trajectory_in_current(position, prefix,args=args)
+    def trajectory_in_current_(self, position, prefix=None,args=None,position1=None,args1=None):
+        self.current.trajectory_in_current_(position, prefix,args=args,position1=position1,args1=args1)
     def reset(self, seed: Optional[int] = None,
               return_info: bool = False,
               options: Optional[dict] = None,

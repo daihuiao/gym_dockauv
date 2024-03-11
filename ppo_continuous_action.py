@@ -24,6 +24,7 @@ import torch.optim as optim
 import tyro
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
+from gym_dockauv.evaluation import evaluate
 
 import numpy as np
 
@@ -58,7 +59,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "洋流助力_thruster___"
+    wandb_project_name: str = "0301_clip"
     """the wandb's project name"""
     wandb_entity: str = "aohuidai"
     """the entity (team) of wandb's project"""
@@ -79,6 +80,7 @@ class Args:
     learning_rate: float = 3e-4
     """the learning rate of the optimizer"""
     num_envs: int = 12
+    num_envs_eval: int = 1
     """the number of parallel game environments"""
     num_steps: int = 1000
     """the number of steps to run in each environment per policy rollout"""
@@ -118,9 +120,8 @@ class Args:
     current_on: bool = True
     tau: float = 0.5
 
-    w_velocity: float = 1
-    delta_distance: float = 10
-    thruster_penalty: float = 0.1
+    w_velocity: float = 0.1
+    thruster_penalty: float = 1.0
 
 
 def make_env(env_id, index, capture_video, run_name, gamma, env_config):
@@ -128,7 +129,7 @@ def make_env(env_id, index, capture_video, run_name, gamma, env_config):
         env_config_ = copy.deepcopy(env_config)
         env_config_["index"] = index
 
-        if capture_video and idx == 0:
+        if capture_video and index == 0:
             env = gym.make(env_id, render_mode="rgb_array")
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
@@ -195,7 +196,7 @@ used_TRAIN_CONFIG["thruster"] = 1000
 # 计算二范数
 used_TRAIN_CONFIG["max_dist_from_goal"] = np.linalg.norm(np.array(goal_point) - np.array(start_point))
 used_TRAIN_CONFIG["dist_goal_reached_tol"] = 0.05 * np.linalg.norm(np.array(goal_point) - np.array(start_point))
-used_TRAIN_CONFIG["max_timesteps"] = 1000
+used_TRAIN_CONFIG["max_timesteps"] = 999
 
 used_TRAIN_CONFIG["title"] = "Training Run"
 
@@ -227,7 +228,7 @@ if __name__ == "__main__":
     # used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", curr_run)
     used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", run_name)
 
-    print("current:",args.current_on)
+    print("current on:",args.current_on)
     if args.track:
         import wandb
 
@@ -236,7 +237,8 @@ if __name__ == "__main__":
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            group="cleanrl" + "_tau:" + str(args.tau),
+            group="cleanrl" + "_tau:" + str(args.tau)+"clip:"+str(args.clip_coef),
+            mode="online",
             sync_tensorboard=True,
             config=my_config,
             name=run_name,
@@ -267,6 +269,12 @@ if __name__ == "__main__":
     # envs.num_envs = args.num_envs
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space
+
+    envs_eval = [make_env(args.env_id, i, args.capture_video, run_name, args.gamma, used_TRAIN_CONFIG) for i in
+            range(1,args.num_envs_eval+1)]
+    envs_eval = SubprocVecEnv(envs_eval)
+    envs_eval.single_action_space = envs_eval.action_space
+    envs_eval.single_observation_space = envs_eval.observation_space
 
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
@@ -335,10 +343,11 @@ if __name__ == "__main__":
                                       global_step)
                     writer.add_scalar("charts/total_distance_moved",infos[i]["total_distance_moved"],global_step)
                     writer.add_scalar("charts/velocity=total_distance_moved/t",infos[i]["total_distance_moved"]/ (0.1*infos[i]["episode"]["l"]),global_step)
-            indices = np.where(infos[0]["conditions_true"])
-            if len(indices[0]) > 0:
+            # indices = np.where(infos[0]["conditions_true"])
+            indices = infos[0]["conditions_true"]
+            if len(indices) > 0:
                 try:
-                    wandb.log({"logs/done_condition(0:goal,1:border,3:step,4：collision)": indices[0][0]})
+                    wandb.log({"logs/done_condition(0:goal,1:border,3:step,4：collision)": indices[0]})
                 except:
                     pass
 
@@ -435,6 +444,13 @@ if __name__ == "__main__":
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+
+        #这里该评估一下了
+        episode_return, episode_length,evaluation_time = evaluate(envs_eval,agent,device=device,args=args,
+                                          low=low,high=high,num_envs=args.num_envs_eval,writer=writer,global_step=global_step)
+        # writer.add_scalar("evaluation/eval_episodic_return", episode_return, global_step)
+        # writer.add_scalar("evaluation/eval_episodic_length", episode_length, global_step)
+        # writer.add_scalar("evaluation/eval_time", evaluation_time, global_step)
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"

@@ -1,12 +1,18 @@
-for tau in 0.1 0.3 0.5 0.7 0.9 0.99
+for seed in  0 1 2
 do
-  for seed in  9
+  for clip_coef in 0.1 0.05 0.25 0.15
+  do
+  for tau in  0.9
   do
 #    python ppo_continuous_action.py  --seed $seed --tau $tau --w_velocity 0.1 --thruster_penalty 0.1
 #    python ppo_continuous_action.py  --seed $seed --tau $tau --w_velocity 0.1 --thruster_penalty 0.5
-    python ppo_continuous_action.py  --seed $seed --tau $tau --w_velocity 0.1 --thruster_penalty 1.0
+    python ppo_continuous_action.py  --seed $seed --tau $tau --w_velocity 0.1 --thruster_penalty 1.0 --clip_coef $clip_coef
+  done
   done
 done
+
+
+
 
 
 
