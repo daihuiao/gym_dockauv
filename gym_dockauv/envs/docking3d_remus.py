@@ -242,6 +242,10 @@ class BaseDocking3d_remus(gym.Env):
         self.current.trajectory_in_current(position, prefix,args=args)
     def trajectory_in_current_(self, position, prefix=None,args=None,position1=None,args1=None):
         self.current.trajectory_in_current_(position, prefix,args=args,position1=position1,args1=args1)
+
+    def trajectory_in_current_1(self, position, prefix=None, args=None, position1=None, args1=None):
+        self.current.trajectory_in_current_1(position, prefix, args=args, position1=position1, args1=args1)
+
     def reset(self, seed: Optional[int] = None,
               return_info: bool = False,
               options: Optional[dict] = None,

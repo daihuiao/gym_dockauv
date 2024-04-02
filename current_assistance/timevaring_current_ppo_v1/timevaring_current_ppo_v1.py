@@ -1,23 +1,19 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_actionpy
+import os
+import sys
 
+# 获取当前脚本所在目录的上一级目录(即项目根目录)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 将项目根目录添加到sys.path
+sys.path.append(project_root)
 
 from huggingface_hub.utils import tqdm
-
-from gym_dockauv.utils.datastorage import EpisodeDataStorage, FullDataStorage
-from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_DEFAULT
-from gym_dockauv.config.env_config import PREDICT_CONFIG, MANUAL_CONFIG, TRAIN_CONFIG, REGISTRATION_DICT
 from gym_dockauv.envs.docking3d import BaseDocking3d
-
-import copy
-import os
 import random
 import time
 from dataclasses import dataclass
-from pathlib import Path
-
-import gym
 # import gymnasium as gym
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -25,20 +21,35 @@ import tyro
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 from gym_dockauv.evaluation import evaluate
-
+from stable_baselines3.common.vec_env import SubprocVecEnv
+import copy
+from pathlib import Path
 import numpy as np
-
 import wandb
-
-from gym_dockauv.config.DRL_hyperparams import PPO_HYPER_PARAMS_TEST, SAC_HYPER_PARAMS_TEST
-# from stable_baselines3 import A2C, PPO, DDPG, SAC
-
-from gym_dockauv.config.env_config import TRAIN_CONFIG, TRAIN_CONFIG_remus, TRAIN_CONFIG_remus_Karman
-import gym_dockauv.train as train
+import gym
 from gym_dockauv.utils.datastorage import EpisodeDataStorage
 import matplotlib as mpl
 import os
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from gym_dockauv.config.env_config import REGISTRATION_DICT,TRAIN_CONFIG_remus_Karman
+
+mpl.rcParams["axes.titlesize"] = 18
+mpl.rcParams["axes.labelsize"] = 14
+mpl.rcParams["xtick.labelsize"] = 12
+mpl.rcParams["ytick.labelsize"] = 12
+def make_gym(gym_env: str, env_config: dict):
+    """
+    Wrapper to create and return gym and return error if key is wrong
+
+    :param gym_env: Registration string of gym from docking3d env
+    :param env_config: Config for environment
+    :return:
+    """
+    if gym_env in REGISTRATION_DICT:
+        env = gym.make(gym_env, env_config=env_config)
+        return env
+    else:
+        raise KeyError(f"Not valid gym environment registration string,"
+                       f" available options are {REGISTRATION_DICT.keys()}")
 
 os.environ["WANDB_API_KEY"] = "b4fdd4e5e894cba0eda9610de6f9f04b87a86453"
 
@@ -59,7 +70,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "0301_clip"
+    wandb_project_name: str = "0320"
     """the wandb's project name"""
     wandb_entity: str = "aohuidai"
     """the entity (team) of wandb's project"""
@@ -73,7 +84,7 @@ class Args:
     """the user or org name of the model repository from the Hugging Face Hub"""
 
     # Algorithm specific arguments
-    env_id: str = "ObstaclesCurrentDocking3d_remusStartGoal-v0"
+    env_id: str = "timevaring_current-v1"
     """the id of the environment"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
@@ -122,7 +133,7 @@ class Args:
 
     w_velocity: float = 0.1
     thruster_penalty: float = 1.0
-    thruster: float = 400
+    thruster: float = 1000
     thruster_min: float = 0.
 
 def make_env(env_id, index, capture_video, run_name, gamma, env_config):
@@ -225,8 +236,8 @@ if __name__ == "__main__":
     args.num_iterations = args.total_timesteps // args.batch_size
     # run_name = f"{args.env_id.split()}__{args.exp_name}__{args.seed}__{int(time.time())}"
     # run_name = f"tau:{args.tau}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    run_name = f"tau:{args.tau}_currentOn:{args.current_on}_w_velocity:{args.w_velocity}" \
-               f"_thruster:{args.thruster_penalty}_{args.seed}__{int(time.time())}"
+    run_name = f"thruster:{args.thruster}_w_velocity:{args.w_velocity}" \
+               f"_thruster_penalty:{args.thruster_penalty}_tau:{args.tau}_currentOn:{args.current_on}_{args.seed}__{int(time.time())}"
     # used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", curr_run)
     used_TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/", run_name)
 
@@ -482,3 +493,22 @@ if __name__ == "__main__":
 
     envs.close()
     writer.close()
+
+    env = make_gym(gym_env=args.env_id, env_config=used_TRAIN_CONFIG)  # type: BaseDocking3d
+
+    for i in range(1, 500):
+        for j in range(0, 1):
+            try:
+                epi_stor = EpisodeDataStorage()
+                epi_stor.load(
+                    file_name=used_TRAIN_CONFIG["save_path_folder"] + f"/Training Run__EPISODE_{i}__process_{j}.pkl")
+                position = epi_stor.positions
+                distance_moved = [np.linalg.norm(position[i + 1] - position[i]) for i in range(len(position) - 1)]
+                print("total_distance_moved", sum(distance_moved))
+                print("total_distance_moved/t", sum(distance_moved) / (0.1 * len(position)))
+
+                env.reset()
+                env.trajectory_in_current(epi_stor.positions,
+                                          prefix=used_TRAIN_CONFIG["save_path_folder"] + f"/fig_episode_{i}_process{j}")
+            except:
+                pass

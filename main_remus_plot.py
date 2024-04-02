@@ -52,40 +52,14 @@ if __name__ == "__main__":
     TRAIN_CONFIG["vehicle"] = "remus100"
     # if True:
     if False:
-        # ---------- TRAINING ----------
-        # Training for multiple models and environment at once
-        for GYM in GYM_ENV:
-            for K, MODEL in enumerate(MODELS):
-                TRAIN_CONFIG["title"] = "Training Run"
-
-                log_dir = os.path.join(os.getcwd(), "logs/")
-                log_dir = Path(log_dir)
-                file_name_prefix = GYM + MODELS_STR[K]
-                exst_run_nums = [int(str(folder.name).split(file_name_prefix)[1].split("_")[1]) for folder in log_dir.iterdir() if
-                                 str(folder.name).startswith(file_name_prefix)]
-                if len(exst_run_nums) == 0:
-                    curr_run = file_name_prefix + "_" + '1'
-                else:
-                    curr_run = file_name_prefix + "_" + '%i' % (max(exst_run_nums) + 1)
-                TRAIN_CONFIG["save_path_folder"] = os.path.join(os.getcwd(), "logs/",curr_run)
-
-                train.train(gym_env=GYM,
-                            total_timesteps=1000000,
-                            MODEL=MODEL,
-                            model_save_path="logs/"+curr_run+GYM+MODELS_STR[K],
-                            tb_log_name=curr_run,
-
-                            agent_hyper_params=HYPER_PARAMS[K],
-                            env_config=TRAIN_CONFIG,
-                            timesteps_per_save=100000,
-                            model_load_path=None)
+        pass
     else:
         # ---------- VIDEO GENERATION ----------
         # Example code on how to save a video of on of the saved episode from either prediction or training
         for i in range(1,500):
             for j in range(0,1):
                 prefix = "/home/ps/dai/overall/togithub/gym_dockauv" \
-    "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0ppo_continuous_action_20"
+    "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0_SAC_24"
     # "/logs/ObstaclesCurrentDocking3d_remusStartGoal-v0ppo_continuous_action_50"
                          # "/logs"
                 epi_stor = EpisodeDataStorage()

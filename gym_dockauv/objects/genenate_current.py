@@ -26,7 +26,7 @@ def find_nearest_index(array, value):
 class Karmen_current():
     draw = False
 
-    def __init__(self, range_x=26, range_y=18, range_z=20, start_point=[-0, -10], goal_point=[-0, 10],
+    def __init__(self, range_x=26, range_y=18, range_z=20, start_point=[-0, -5], goal_point=[-0, 5],
                  current_index=250):
         self.start_point = start_point
         self.goal_point = goal_point
@@ -80,6 +80,81 @@ class Karmen_current():
             # print(Iter)
             # plt.savefig("vel."+str(Iter/100).zfill(4)+".png", bbox_inches='tight', dpi=200)
             plt.show()
+    def trajectory_in_current_1(self, position, prefix, args=None,position1=None,args1=None):
+        import matplotlib.colors as mcolors
+        plt.rcParams['text.usetex'] = True
+        if args is not None:
+            position_scale = 10
+        else:
+            position_scale = 1
+        w = self.u[0, :, :].transpose()
+        v = self.u[1, :, :].transpose()
+        x = np.arange(0 - self.grid_size_x / 2, 0 + self.grid_size_x / 2, self.grid_size_x / w.shape[1])
+        y = np.arange(0 - self.grid_size_y / 2, 0 + self.grid_size_y / 2, self.grid_size_y / v.shape[0])
+        circle = plt.Circle((position_scale * self.cx - position_scale * self.grid_size_x / 2,
+                             position_scale * self.cy - position_scale * self.grid_size_y / 2),
+                            position_scale * self.r, color='blue')
+        fig, ax = plt.subplots(figsize=(6.5, 4.5))
+        ax.add_artist(circle)
+        d = 2
+        plt.streamplot(position_scale * x, position_scale * y, w, v, density=d, linewidth=1 / d, arrowsize=1 / d)
+        ax.set_aspect('equal')
+        colors = self.generate_rainbow_color_scheme(len(position))
+        """
+        step1
+        """
+
+        labels = args["label"]
+        annotated = args["annotated"]
+        for i in range(len(position)):
+            position[i] = [position_scale * position[i][j] for j in range(len(position[i]))]
+            color = mcolors.rgb2hex(colors[i])  # 将RGB值转换为十六进制颜色字符串
+            # if not i==1:
+            #     ax.plot(np.array(position[i])[:-10, 0], np.array(position[i])[:-10, 1]
+            #             , color=color, label=labels[i])
+            # plt.scatter(position[i][0][0], position[i][0][1], c=color)
+            plt.annotate(annotated[i], (position[i][0][0], position[i][0][1]),
+                         textcoords="offset points", xytext=((-1) ** i * 2 * 60, 75), ha='center' ,fontsize='large',
+                         bbox=dict(facecolor='white', edgecolor=color, boxstyle='round,pad=0.1'))
+        # plt.text(args["start_point"][0] - 50, args["start_point"][1] - 25, "Source Point",
+        #          fontsize=18,)  # 添加起始点标记及文字说明
+        # plt.text(args["goal_point"][0] - 75, args["goal_point"][1] + 25, "Destination Point",
+        #          fontsize=16)  # 添加起始点标记及文字说明
+        plt.scatter(args["start_point"][0], args["start_point"][1], c="r", label="Starting point")
+        plt.scatter(args["goal_point"][0], args["goal_point"][1], c="g", label="Target point")
+
+        """step2"""
+        position1 = [position_scale * position1[j] for j in range(len(position1))]
+
+        # cmap = cm.get_cmap('jet')  viridis coolwarm cool RdYlBu  Set1 Set2 Pastel
+        cmap = cm.get_cmap('cool')  # 使用预定义的颜色映射，例如'jet'
+
+        scatter = ax.scatter(np.concatenate((np.array(position1)[:, 0],np.array(position[0])[:, 0])),
+                             np.concatenate((np.array(position1)[:, 1],np.array(position[0])[:, 1])),
+                             c=np.concatenate((args1.get("cmap_value", "orange"),args1.get("cmap_value_1", "orange")))/0.1,
+                             cmap=cmap,
+                             sizes=4 * np.ones(len(position1))
+                             )  # 使用速度作为颜色，viridis是一个预定义的颜色映射
+        # ax.plot(np.array(position[0])[:, 0], np.array(position[0])[:, 1],"k--",label=labels[0])  # 绘制轨迹线，使用黑色虚线
+        # ax.plot(np.array(position1)[:, 0], np.array(position1)[:, 1],"k:",label=labels[1])  # 绘制轨迹线，使用黑色虚线
+
+        # ax.plot(np.array(position)[:, 0], np.array(position)[:, 1], 'k--', c=cmap(args.get("cmap_value", "orange")/1000.))
+        # 设置颜色条
+        cbar = plt.colorbar(scatter,shrink=0.6)
+        cbar.set_label('Thruster Speed $10^3 $')
+        # plt.scatter(self.start_point[0], self.start_point[1], c="r")
+        # plt.scatter(self.goal_point[0], self.goal_point[1], c="g")
+        try:
+            plt.savefig(f"./current_assitance.png", bbox_inches='tight', dpi=200)
+            plt.savefig(f"./current_assitance.pdf", bbox_inches='tight', dpi=200)
+        except:
+            plt.savefig(f"./current_assitance.png", bbox_inches='tight', dpi=200)
+            plt.savefig(f"./current_assitance.pdf", bbox_inches='tight', dpi=200)
+        plt.xlabel('X(m)',fontsize='small')
+        plt.ylabel('Y(m)',fontsize='small')
+        plt.legend(loc='upper right', bbox_to_anchor=(0.95, 0.8),fontsize='x-small')
+        plt.show()
+        haha = True
     def trajectory_in_current_(self, position, prefix, args=None,position1=None,args1=None):
         import matplotlib.colors as mcolors
         plt.rcParams['text.usetex'] = True
@@ -115,7 +190,7 @@ class Karmen_current():
             plt.scatter(position[i][0][0], position[i][0][1], c=color)
             half_len = int(len(position[i]) / 2)
             plt.annotate(annotated[i], (position[i][half_len][0], position[i][half_len][1]),
-                         textcoords="offset points", xytext=((-1) ** i * 60, -75), ha='center' ,fontsize='small',
+                         textcoords="offset points", xytext=((-1) ** i * 60, -75), ha='center' ,fontsize='large',
                          bbox=dict(facecolor='white', edgecolor=color, boxstyle='round,pad=0.1'))
         # plt.text(args["start_point"][0] - 50, args["start_point"][1] - 25, "Source Point",
         #          fontsize=18,)  # 添加起始点标记及文字说明
@@ -146,9 +221,9 @@ class Karmen_current():
         # plt.scatter(self.start_point[0], self.start_point[1], c="r")
         # plt.scatter(self.goal_point[0], self.goal_point[1], c="g")
         try:
-            plt.savefig(f"./draw/fig/color/推进器转速3.png", bbox_inches='tight', dpi=200)
+            plt.savefig(f"./draw/fig/color/推进器转速4.png", bbox_inches='tight', dpi=200)
         except:
-            plt.savefig(f"../fig/color/推进器转速3.png", bbox_inches='tight', dpi=200)
+            plt.savefig(f"./推进器转速4.png", bbox_inches='tight', dpi=200)
         plt.xlabel('X(m)',fontsize='small')
         plt.ylabel('Y(m)',fontsize='small')
         plt.legend(loc='upper right', bbox_to_anchor=(0.95, 0.8),fontsize='x-small')
@@ -352,6 +427,33 @@ class Karmen_current():
         ind_y = sum(input_y >= self.yy) - 1
         u = self.U[ind_y, ind_x]
         v = self.V[ind_y, ind_x]
+        w = 0
+
+        return np.array([u, v, w])
+
+    def generate_current_with_t(self, input_x, input_y, input_z,t):
+        try:
+            assert bool(float(input_x) > float(self.xx.min()))
+            assert bool(float(input_x) < float(self.xx.max()))
+            assert bool(float(input_y) > float(self.yy.min()))
+            assert bool(float(input_y) < float(self.yy.max()))
+            assert bool(float(input_z) > float(self.zz.min()))
+            assert bool(float(input_z) < float(self.zz.max()))
+        except:
+            print("输入的经纬度不在范围内")
+
+            print("_lon:", input_x, "lon.min:", self.xx.min(), "lon.max:", self.xx.max())
+            print("_lat:", input_y, "lat.min:", self.yy.min(), "lat.max:", self.yy.max())
+            print("_alt:", input_z, "alt.min:", self.zz.min(), "alt.max:", self.zz.max())
+
+        ind_x = sum(input_x >= self.xx) - 1
+        ind_y = sum(input_y >= self.yy) - 1
+
+        U = 10 * self.Us[400+t//10][0, :, :].transpose()
+        V = 10 * self.Us[400+t//10][1, :, :].transpose()
+
+        u = U[ind_y, ind_x]
+        v = V[ind_y, ind_x]
         w = 0
 
         return np.array([u, v, w])

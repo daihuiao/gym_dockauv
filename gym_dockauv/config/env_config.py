@@ -23,7 +23,8 @@ REGISTRATION_DICT = {
     "ObstaclesCurrentDocking3d_remus-v0": "gym_dockauv.envs:ObstaclesCurrentDocking3d_remus",
     "ObstaclesNoCapDocking3d_remus-v0": "gym_dockauv.envs:ObstaclesNoCapDocking3d_remus",
 
-    "ObstaclesCurrentDocking3d_remusStartGoal-v0": "gym_dockauv.envs:ObstaclesCurrentDocking3d_remusStartGoal"
+    "ObstaclesCurrentDocking3d_remusStartGoal-v0": "gym_dockauv.envs:ObstaclesCurrentDocking3d_remusStartGoal",
+    "timevaring_current-v1": "gym_dockauv.envs.docking3d_remus_v1:Timevaring_current_v1",
 }
 
 # ---------- Base Config for all other possible configs ----------

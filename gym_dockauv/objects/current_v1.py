@@ -20,7 +20,7 @@ class Current:
     """
 
     def __init__(self, mu: float, V_min: float, V_max: float, Vc_init: float, alpha_init: float, beta_init: float,
-                 white_noise_std: float, step_size: float, current_on: bool, current_scale: float = 1.0):
+                 white_noise_std: float, step_size: float, current_on: bool, current_scale: float = 1.0,config=None):
         self.current_on = current_on
         self.mu = mu
         self.V_min = V_min
@@ -31,7 +31,7 @@ class Current:
         self.white_noise_std = white_noise_std
         self.step_size = step_size
         self.current_scale = current_scale
-        self.karmen_current = Karmen_current()
+        self.karmen_current = Karmen_current(start_point=config["start_point"],goal_point=config["goal_point"],)
         if self.karmen_current.draw:
             self.karmen_current.draw_current()
         Karmen_current.draw = False
@@ -61,7 +61,8 @@ class Current:
 
             # vel_current_NED = self.get_current_NED()
             if self.current_on:
-                vel_current_NED = self.current_scale * self.karmen_current.generate_current(position[0], position[1], position[2], 0)
+                vel_current_NED = self.current_scale * \
+                                  self.karmen_current.generate_current_with_t(position[0], position[1], position[2], 0)
             else:
                 vel_current_NED = np.array([0, 0, 0])
             vel_current_BODY = np.transpose(geom.Rzyx(phi, theta, psi)).dot(vel_current_NED)

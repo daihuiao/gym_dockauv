@@ -31,8 +31,9 @@ HYPER_PARAMS = [
     SAC_HYPER_PARAMS_TEST,
     PPO_HYPER_PARAMS_TEST,
 ]
-from  PID import PID_Controller
+from  gym_dockauv.PID import PID_Controller
 if __name__ == "__main__":
+    # PID = PID_Controller(0.6, 0.0, 0.01)
     PID = PID_Controller(0.3, 0.0, 0.00)
 
 
@@ -40,21 +41,21 @@ if __name__ == "__main__":
     # used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG)
     used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
     used_TRAIN_CONFIG["vehicle"] = "remus100"
-    start_point = [-0, -10, 0]
-    goal_point = [-0, 10, 0]
+    start_point = [-0, -5, 0]
+    goal_point = [-0, 5, 0]
     used_TRAIN_CONFIG["start_point"] = start_point
     used_TRAIN_CONFIG["goal_point"] = goal_point
     used_TRAIN_CONFIG["bounding_box"] = [26, 18, 20]
-    used_TRAIN_CONFIG["thruster"] = 1000
+    used_TRAIN_CONFIG["thruster"] = 400
     # 计算二范数
     used_TRAIN_CONFIG["max_dist_from_goal"] = np.linalg.norm(np.array(goal_point) - np.array(start_point))
     used_TRAIN_CONFIG["dist_goal_reached_tol"] = 0.08 * np.linalg.norm(np.array(goal_point) - np.array(start_point))
-    used_TRAIN_CONFIG["max_timesteps"] = 1000
+    used_TRAIN_CONFIG["max_timesteps"] = 1999
 
     used_TRAIN_CONFIG["title"] = "Training Run"
 
 
-    ncount = 1000
+    ncount = 2000
     ts = np.zeros(ncount)
     yaw_to_target_list = []
     yaw_control_list = []
@@ -78,7 +79,7 @@ if __name__ == "__main__":
                 for i in range(ncount):
                     ts[i] = i * h
                     yaw_control  = PID.control_action(yaw_to_target-0,h)
-                    new_obs, rewards, dones, infos = env.step(np.array([yaw_control,0,1000]))
+                    new_obs, rewards, dones, infos = env.step(np.array([yaw_control,0,300]))
                     yaw_to_target = env.yaw_to_target()
                     yaw_to_target_list.append(yaw_to_target)
                     yaw_control_list.append(yaw_control)
