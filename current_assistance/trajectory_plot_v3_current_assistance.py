@@ -1,4 +1,5 @@
 import copy
+import pickle
 
 import gym
 import numpy as np
@@ -65,6 +66,7 @@ if __name__ == "__main__":
                 yaw_control_list = []
                 all_positions = []
                 position = []
+                state12s =[]
                 env = make_gym(gym_env=GYM, env_config=used_TRAIN_CONFIG)  # type: BaseDocking3d
                 env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
                 env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -87,10 +89,15 @@ if __name__ == "__main__":
                     yaw_to_target_list.append(yaw_to_target)
                     yaw_control_list.append(yaw_control)
                     position.append(infos["position"])
+                    state12s.append(infos["state12"])
 
 
                     if dones:
+
+                        haha = np.array(state12s)
                         thruster_1 = np.ones(len(position)) * thruster_speed
+                        with open("PID2000.pkl", "wb") as f:
+                            pickle.dump(haha, f)
                         # print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                         distance_moved_1 = [np.linalg.norm(position[i + 1] - position[i]) for i in
                                           range(len(position) - 1)]
@@ -121,6 +128,13 @@ if __name__ == "__main__":
                         break
 
                 env.reset()
+
+# todo attention
+                prefix = "./logs"
+                epi_stor = EpisodeDataStorage()
+                epi_stor.load(
+                    file_name=prefix + f"/Training Run__EPISODE_1__process_0.pkl")
+                epi_stor.save_animation_video(save_path="animation/PID.mp4", fps=80)
 
                 all_positions.append(np.array(position))
                 position_0 = copy.deepcopy(position)
@@ -158,8 +172,8 @@ if __name__ == "__main__":
                 RL_steps = len(position)
                 RL_total_distance_moved = sum(distance_moved)
                 all_positions.append(np.array(position))
-
-
+#todo attention
+                epi_stor.save_animation_video(save_path="animation/goal_constr_fail.mp4", fps=80)
 
                 env = make_gym(gym_env=GYM_ENV[0], env_config=used_TRAIN_CONFIG)  # type: BaseDocking3d
                 # if False:
@@ -205,4 +219,4 @@ if __name__ == "__main__":
     # epi_stor = EpisodeDataStorage()
     # epi_stor.load(
     #     file_name=prefix + "/Training Run__EPISODE_1__process_0.pkl")
-    # epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)
+    epi_stor.save_animation_video(save_path="goal_constr_fail.mp4", fps=80)

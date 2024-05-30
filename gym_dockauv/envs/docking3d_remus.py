@@ -63,6 +63,7 @@ class BaseDocking3d_remus(gym.Env):
         except:
             self.current_on = True
         self.index = env_config["index"] if env_config["index"] is not None else 0
+        self.created_time = time.time()
         self.title = self.config["title"]
         self.save_path_folder = self.config["save_path_folder"]
         self.log_level = self.config["log_level"]
@@ -211,6 +212,7 @@ class BaseDocking3d_remus(gym.Env):
         self.meta_data_done = self.meta_data_reward[self.n_cont_rewards:]
         self.goal_constraints = []  # List of booleans for further contraints as soon as goal is reached
         self.goal_location = None  # This needs to be defined in self.generate_environment
+        self.start_location = None  # This needs to be defined in self.generate_environment
         self.dist_goal_reached_tol = self.config[
             "dist_goal_reached_tol"]  # Distance tolerance for successfully reached goal
         self.velocity_goal_reached_tol = self.config["velocity_goal_reached_tol"]  # Velocity limit at goal
@@ -234,12 +236,17 @@ class BaseDocking3d_remus(gym.Env):
         self.episode_animation = None
         self.ax = None
 
+        self.random_attitude = None
+        self.random_position = None
+
         logger.info('---------- Initialization of environment complete ---------- \n')
         logger.info('---------- Rewards function description ----------')
         logger.info(self.reward_step.__doc__)
 
     def trajectory_in_current(self, position, prefix=None,args=None):
         self.current.trajectory_in_current(position, prefix,args=args)
+    def trajectory_in_current_random_position(self, position, prefix=None,args=None):
+        self.current.trajectory_in_current_random_position(position, prefix,args=args)
     def trajectory_in_current_(self, position, prefix=None,args=None,position1=None,args1=None):
         self.current.trajectory_in_current_(position, prefix,args=args,position1=position1,args1=args1)
 
@@ -281,8 +288,9 @@ class BaseDocking3d_remus(gym.Env):
         # Check if we should save a datastorage item
         if self.episode_data_storage and (self.episode % self.interval_datastorage == 0 or self.episode == 1):
             self.episode_data_storage.update(self.nu_c)
-            self.episode_data_storage.save()
+            self.episode_data_storage.save(self.cond_idx_done,goal_location=self.goal_location,start_location=self.start_location)
         self.episode_data_storage = None
+        self.cond_idx_done = None
 
         # Update Full data storage:
         if self.episode != 0:
@@ -361,6 +369,7 @@ class BaseDocking3d_remus(gym.Env):
         # Return info if wanted
         if return_info:
             return self.observation, return_info_dict
+        self.observation = self.observe()
         return self.observation
         # return self.observation,{}
 
@@ -437,6 +446,8 @@ class BaseDocking3d_remus(gym.Env):
         self.auv.last_position = copy.deepcopy(self.auv.position)
         self.thruster += action[-1]
         self.thruster_square += action[-1]**2
+        if len(cond_idx) > 0:
+            self.cond_idx_done = cond_idx[0] # wandb.log({ "logs/done_condition(0:goal,1:border,3:step,4：collision)": indices[0]})
 
         # Update info dict
         self.info = {"episode_number": self.episode,  # Need to be episode number, because episode is used by sb3
@@ -458,6 +469,7 @@ class BaseDocking3d_remus(gym.Env):
                         "thruster":self.thruster,
                      "thruster_square":self.thruster_square,
                         "total_distance_moved":self.total_distance_moved,
+                        "state12":self.auv.state,
                      }
 
         return self.observation, self.last_reward, self.done, self.info
@@ -566,6 +578,11 @@ class BaseDocking3d_remus(gym.Env):
         obs[16] = np.clip(self.auv.position[0] / self.bounding_box[0], -1, 1)
         obs[17] = np.clip(self.auv.position[1] / self.bounding_box[1], -1, 1)
         obs[18] = np.clip(self.auv.position[2] / self.bounding_box[2], -1, 1)
+        if self.random_position is not None:
+            #goal location
+            obs[19] = np.clip(self.goal_location[0] / self.bounding_box[0], -1, 1)
+            obs[20] = np.clip(self.goal_location[1] / self.bounding_box[1], -1, 1)
+            obs[21] = np.clip(self.goal_location[2] / self.bounding_box[2], -1, 1)
 
         # obs[self.n_obs_without_radar:] = np.clip(self.radar.intersec_dist_reduced / self.radar.max_dist, 0, 1)
         return obs

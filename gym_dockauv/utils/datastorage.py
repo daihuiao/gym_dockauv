@@ -310,13 +310,16 @@ class EpisodeDataStorage:
         if self.radar is not None:
             self.storage["radar"].add_row(self.radar.end_pos_n)
 
-    def save(self) -> str:
+    def save(self,cond_idx_done=None,goal_location=None,start_location=None) -> str:
         """
         Function to save the pickle file
 
         :return: path to where file is saved
         """
         # TODO: think about doing this automatically, but I like explicit
+        self.storage["cond_idx_done"] = cond_idx_done
+        self.storage["goal_location"] = goal_location
+        self.storage["start_location"] = start_location
         self.storage["vehicle"]["states"] = self.storage["vehicle"]["states"].get_nparray()
         self.storage["vehicle"]["states_dot"] = self.storage["vehicle"]["states_dot"].get_nparray()
         self.storage["vehicle"]["u"] = self.storage["vehicle"]["u"].get_nparray()
@@ -446,28 +449,29 @@ class EpisodeDataStorage:
         """
         x, y, z = self.states[:, 0], self.states[:, 1], self.states[:, 2]
 
-        # 创建一个 3D 图形
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot(x, y, z)
-        ax.view_init(elev=94, azim=-89)
-        ax.set_xlabel('X Axis')
-        ax.set_ylabel('Y Axis')
-        ax.set_zlabel('Z Axis')
-        plt.show()
-
-        # 创建一个 2D 图形
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        ax.plot(x, y)
-        ax.set_xlabel('X Axis')
-        ax.set_ylabel('Y Axis')
-        plt.show()
+        # # 创建一个 3D 图形
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.plot(x, y, z)
+        # ax.view_init(elev=94, azim=-89)
+        # ax.set_xlabel('X Axis')
+        # ax.set_ylabel('Y Axis')
+        # ax.set_zlabel('Z Axis')
+        # plt.show()
+        #
+        # # 创建一个 2D 图形
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111)
+        # ax.plot(x, y)
+        # ax.set_xlabel('X Axis')
+        # ax.set_ylabel('Y Axis')
+        # plt.show()
 
         EpisodeVisualization.save_animation_video(save_path=save_path,
                                                   fps=fps,
                                                   states=self.states,
                                                   episode=self.storage["episode"],
-                                                  shapes=self.storage["shapes"],
+                                                  # shapes=self.storage["shapes"],
+                                                  shapes=None,
                                                   radar_end_pos=self.storage["radar"],
                                                   title=self.storage["title"])

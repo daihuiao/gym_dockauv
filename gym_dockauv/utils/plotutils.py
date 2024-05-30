@@ -363,12 +363,12 @@ class EpisodeAnimation:
         :return: axes
         """
         # Create Axis
-        self.ax_path = self.fig.add_subplot(projection="3d",)
+        self.ax_path = self.fig.add_subplot(projection="3d")
 
         # 设置初始视角
         self.ax_path.view_init(elev=-96, azim=91)
-        self.ax_path.set_xlim([-20, 20])
-        self.ax_path.set_ylim([-20, 20])
+        self.ax_path.set_xlim([-10, 10])
+        self.ax_path.set_ylim([-10, 10])
         self.ax_path.set_zlim([-20, 20])
 
         # Create lines initially without data
@@ -383,9 +383,9 @@ class EpisodeAnimation:
         self.bm.add_artists([self.ax_path.path_art, self.ax_path.head_art])
 
         # Add labels
-        self.ax_path.set_ylabel("y [m]")
-        self.ax_path.set_xlabel("x [m]")
-        self.ax_path.set_zlabel("z [m]")
+        self.ax_path.set_ylabel("y ")
+        self.ax_path.set_xlabel("x ")
+        self.ax_path.set_zlabel("z")
 
         # Try to fix deep camera angle issues
         self.ax_path.set_proj_type('ortho')

@@ -1,19 +1,14 @@
-import math
 import pathlib
-import time
 
-import numpy as np
 import matplotlib.pyplot as plt
 
-from mpl_toolkits.mplot3d import Axes3D
+plt.rcParams['text.usetex'] = True
+import matplotlib.colors as mcolors
+import numpy as np
+from matplotlib.patches import Rectangle
 import copy
-import timeit
-import numpy as np
-import numpy.linalg as nplin
-import matplotlib.pyplot as plt
 from matplotlib import cm
-from numpy.polynomial.polynomial import polyfit
-import plotly.figure_factory as ff
+
 
 def find_nearest_index(array, value):
     """
@@ -81,8 +76,7 @@ class Karmen_current():
             # plt.savefig("vel."+str(Iter/100).zfill(4)+".png", bbox_inches='tight', dpi=200)
             plt.show()
     def trajectory_in_current_1(self, position, prefix, args=None,position1=None,args1=None):
-        import matplotlib.colors as mcolors
-        plt.rcParams['text.usetex'] = True
+
         if args is not None:
             position_scale = 10
         else:
@@ -156,8 +150,7 @@ class Karmen_current():
         plt.show()
         haha = True
     def trajectory_in_current_(self, position, prefix, args=None,position1=None,args1=None):
-        import matplotlib.colors as mcolors
-        plt.rcParams['text.usetex'] = True
+
         if args is not None:
             position_scale = 10
         else:
@@ -233,8 +226,6 @@ class Karmen_current():
 
     def trajectory_in_current(self, position, prefix, args=None):
 
-        import matplotlib.colors as mcolors
-        plt.rcParams['text.usetex'] = True
         if args is not None:
             position_scale = 10
         else:
@@ -389,6 +380,73 @@ class Karmen_current():
         plt.close()
 
 #绘制Velocity Magnitude图片
+        if False:
+            fig, ax = plt.subplots()
+            # ax.plot(np.array(positon)[:,0], np.array(positon)[:,1])
+            im = ax.imshow(np.sqrt(self.u[0] ** 2 + self.u[1] ** 2).transpose(),
+                           extent=[-260, 260, -180, 180],
+                           cmap=cm.Blues)  # 5 Purples, Re26 YlGn, Re65 Blues, Re220 Reds.
+            ax.set_xlabel('X(m)')
+            ax.set_ylabel('Y(m)')
+            ax.set_xlim(-260, 260)
+            # ax.set_title('Position and Velocity Field')
+            cbar = fig.colorbar(im, shrink=0.7)
+            cbar.set_label('Velocity Magnitude')
+            # ax.legend()
+            # print(Iter)
+            # plt.savefig("vel."+str(Iter/100).zfill(4)+".png", bbox_inches='tight', dpi=200)
+            plt.savefig("./draw/fig/Velocity Magnitude.png", bbox_inches='tight', dpi=200)
+            plt.show()
+            haha = True
+
+    def trajectory_in_current_random_position(self, position, prefix, args=None):
+        if args is not None:
+            position_scale = 1
+        else:
+            position_scale = 1
+        w = self.u[0, :, :].transpose()
+        v = self.u[1, :, :].transpose()
+        x = np.arange(0 - self.grid_size_x / 2, 0 + self.grid_size_x / 2, self.grid_size_x / w.shape[1])
+        y = np.arange(0 - self.grid_size_y / 2, 0 + self.grid_size_y / 2, self.grid_size_y / v.shape[0])
+        circle = plt.Circle((position_scale * self.cx - position_scale * self.grid_size_x / 2,
+                             position_scale * self.cy - position_scale * self.grid_size_y / 2),
+                            position_scale * self.r, color='blue')
+        fig, ax = plt.subplots(figsize=(6.5, 4.5))
+        ax.add_artist(circle)
+        d = 2
+        plt.streamplot(position_scale * x, position_scale * y, w, v, density=d, linewidth=1 / d, arrowsize=1 / d)
+        ax.set_aspect('equal')
+        colors = self.generate_rainbow_color_scheme(len(position))
+
+        ax.plot(np.array(position)[:, 0], np.array(position)[:, 1], c="orange")
+        plt.scatter(args["radius_start_point"][0], args["radius_start_point"][1], c="r",alpha=0.3)
+        plt.scatter(args["radius_goal_point"][0], args["radius_goal_point"][1], c="g",alpha=0.3)
+        plt.scatter(args["start_location"][0], args["start_location"][1], c="r")
+        plt.scatter(args["goal_location"][0], args["goal_location"][1], c="g")
+
+        center = (args["radius_start_point"][0], args["radius_start_point"][1])  # 正方形中心坐标
+        side_length = 2*args["start_goal_radius"] # 正方形边长
+        left = center[0] - side_length / 2
+        bottom = center[1] - side_length / 2
+        square = Rectangle((left, bottom), side_length, side_length, edgecolor='r', facecolor='none')
+        ax.add_patch(square)
+
+        center = (args["radius_goal_point"][0], args["radius_goal_point"][1])  # 正方形中心坐标
+        side_length = 2*args["start_goal_radius"] # 正方形边长
+        left = center[0] - side_length / 2
+        bottom = center[1] - side_length / 2
+        square = Rectangle((left, bottom), side_length, side_length, edgecolor='r', facecolor='none')
+        ax.add_patch(square)
+
+        if prefix is None:
+            plt.show()
+        else:
+            plt.savefig(prefix, bbox_inches='tight', dpi=200)
+        plt.cla()
+        plt.clf()
+        plt.close()
+
+        # 绘制Velocity Magnitude图片
         if False:
             fig, ax = plt.subplots()
             # ax.plot(np.array(positon)[:,0], np.array(positon)[:,1])

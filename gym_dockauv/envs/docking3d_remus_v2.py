@@ -51,6 +51,31 @@ class Timevaring_current_v2(BaseDocking3d_remus):
         if "start_point" in env_config:
             self.start_point_ = env_config["start_point"]
 
+        if "random_position" in env_config and env_config["random_position"]:
+            self.random_position = env_config["random_position"]
+
+            self.start_goal_radius = env_config["start_goal_radius"]
+
+            self.n_obs_without_radar = self.n_obs_without_radar  + 3
+            # self.n_observations = self.n_obs_without_radar + self.radar.n_rays_reduced
+            self.n_observations = self.n_obs_without_radar + 0
+            obs_low = -np.ones(self.n_observations)
+            obs_low[0] = 0
+            obs_low[self.n_obs_without_radar:] = 0
+            self.observation_space = Box(low=obs_low,
+                                         high=np.ones(self.n_observations),
+                                         dtype=np.float32)
+            self.observation = np.zeros(self.n_observations)
+
+        else:
+            self.random_position = None
+
+        if "random_attitude" in env_config and env_config["random_attitude"]:
+            self.random_attitude = env_config["random_attitude"]
+        else:
+            self.random_attitude = None
+
+
     def generate_environment(self):
         """
         Set up an environment after each reset call, can be used to in multiple environments to make multiple scenarios
@@ -64,11 +89,22 @@ class Timevaring_current_v2(BaseDocking3d_remus):
                                step_size=self.auv.step_size,current_on=self.current_on,config=self.config)
         self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
 
-        self.goal_location = self.goal_point_
-        self.auv.position = self.start_point_
+        if self.random_position is not None:
+            random_list_1 = list((np.random.random(3) - 0.5) * 2 * self.start_goal_radius)
+            self.goal_location = [self.goal_point_[i] + random_list_1[i] for i in range(len(self.goal_point_))]
+            random_list_2 = list((np.random.random(3) - 0.5) * 2*self.random_position)
+            self.auv.position = [self.start_point_[i] + random_list_2[i] for i in range(len(self.start_point_))]
+            self.start_location = copy.deepcopy(self.auv.position)
+        else:
+            self.goal_location = self.goal_point_
+            self.auv.position = self.start_point_
+            self.start_location = copy.deepcopy(self.auv.position)
+
         # Attitude
-        # self.auv.attitude = self.generate_random_att(max_att_factor=0.7)
-        self.auv.attitude = np.array([0, 0, 0.49 * np.pi])
+        if self.random_attitude:
+            self.auv.attitude = self.generate_random_att(max_att_factor=0.7)
+        else:
+            self.auv.attitude = np.array([0, 0, 0.49 * np.pi])
 
         ###########
         CAPSULE_RADIUS = 1.0
