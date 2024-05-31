@@ -1,6 +1,9 @@
 import copy
 from abc import ABC, abstractmethod
 import numpy as np
+import jax
+import jax.numpy as jnp
+
 from scipy.integrate import solve_ivp
 from python_vehicle_simulator.lib.gnc import ssa, Rzyx, Tzyx
 
@@ -122,16 +125,24 @@ class AUVSim_remus(StateSpace, ABC):
             self.state[3:6] = geom.ssa(self.state[3:6])  # 将欧拉角限制在[-pi, pi]之间
             self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here
         else:
-            self.state, self.u_actual, self._state_dot = self.remus.remus_solver(self.u, eta=self.state[:6],
-                                                                                 nu=self.state[6:], nu_c=nu_c,
-                                                                                 u_actual=self.u_actual)
+            t = time.time()
+            haha = jax.jit(self.remus.remus_solver)
+            self.state, self.u_actual, self._state_dot = haha(jnp.array(self.u), eta=jnp.array(self.state[:6]),
+                                                                                 nu=jnp.array(self.state[6:]),
+                                                                                nu_c=jnp.array(nu_c),
+                                                                                 u_actual=jnp.array(self.u_actual))
+            print(time.time()-t)
+
+            # self.state, self.u_actual, self._state_dot = self.remus.remus_solver(self.u, eta=self.state[:6],
+            #                                                                      nu=self.state[6:], nu_c=nu_c,
+            #                                                                      u_actual=self.u_actual)
             # distance_moved = np.linalg.norm(self.state[:3] - self.last_state[:3])
             # self.last_state = copy.deepcopy(self.state)
 
             # Convert angle in applicable range
-            self.state[3:6] = geom.ssa(self.state[3:6])  # 将欧拉角限制在[-pi, pi]之间
+            self.state = self.state.at[3:6].set(geom.ssa(self.state[3:6]))  # 将欧拉角限制在[-pi, pi]之间
             # self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here
-
+            self.state = np.array(self.state)
     def state_dot(self, t, state, nu_c: np.ndarray) -> np.ndarray:
         r"""
         The right-hand side (RHS) of the 12 ODEs governing the AUV dynamics. Including:

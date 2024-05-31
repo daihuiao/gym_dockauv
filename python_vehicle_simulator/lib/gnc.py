@@ -10,7 +10,8 @@ URL: www.fossen.biz/wiley
 Author:     Thor I. Fossen
 """
 
-import numpy as np
+# import numpy as np
+from jax import numpy as np
 import math
 
 #------------------------------------------------------------------------------
@@ -19,7 +20,7 @@ def ssa(angle):
     """
     angle = ssa(angle) returns the smallest-signed angle in [ -pi, pi )
     """
-    angle = (angle + math.pi) % (2 * math.pi) - math.pi
+    angle = (angle + np.pi) % (2 * np.pi) - np.pi
 
     return angle
 
@@ -66,7 +67,7 @@ def Hmtrx(r):
     """
 
     H = np.identity(6,float)
-    H[0:3, 3:6] = Smtrx(r).T
+    H = H.at[0:3, 3:6].set(Smtrx(r).T)
 
     return H
 
@@ -80,12 +81,12 @@ def Rzyx(phi,theta,psi):
     2.53
     """
 
-    cphi = math.cos(phi)
-    sphi = math.sin(phi)
-    cth  = math.cos(theta)
-    sth  = math.sin(theta)
-    cpsi = math.cos(psi)
-    spsi = math.sin(psi)
+    cphi = np.cos(phi)
+    sphi = np.sin(phi)
+    cth  = np.cos(theta)
+    sth  = np.sin(theta)
+    cpsi = np.cos(psi)
+    spsi = np.sin(psi)
 
     R = np.array([
         [ cpsi*cth, -spsi*cphi+cpsi*sth*sphi, spsi*sphi+cpsi*cphi*sth ],
@@ -102,10 +103,10 @@ def Tzyx(phi,theta):
     transformation matrix T using the zyx convention
     """
 
-    cphi = math.cos(phi)
-    sphi = math.sin(phi)
-    cth  = math.cos(theta)
-    sth  = math.sin(theta)
+    cphi = np.cos(phi)
+    sphi = np.sin(phi)
+    cth  = np.cos(theta)
+    sth  = np.sin(theta)
 
     try:
         T = np.array([
@@ -131,8 +132,8 @@ def attitudeEuler(eta,nu,sampleTime):
     v_dot   = np.matmul( Tzyx(eta[3], eta[4]), nu[3:6] )
 
     # Forward Euler integration
-    eta[0:3] = eta[0:3] + sampleTime * p_dot
-    eta[3:6] = eta[3:6] + sampleTime * v_dot
+    eta = eta.at[0:3].set(eta[0:3] + sampleTime * p_dot)
+    eta = eta.at[3:6].set(eta[3:6] + sampleTime * v_dot)
 
     return eta
 
@@ -174,19 +175,19 @@ def m2c(M, nu):
         #C  = [  zeros(3,3)      -Smtrx(dt_dnu1)
         #      -Smtrx(dt_dnu1)  -Smtrx(dt_dnu2) ]
         C = np.zeros( (6,6) )
-        C[0:3,3:6] = -Smtrx(dt_dnu1)
-        C[3:6,0:3] = -Smtrx(dt_dnu1)
-        C[3:6,3:6] = -Smtrx(dt_dnu2)
+        C = C.at[0:3,3:6].set(-Smtrx(dt_dnu1))
+        C = C.at[3:6,0:3].set(-Smtrx(dt_dnu1))
+        C = C.at[3:6,3:6].set(-Smtrx(dt_dnu2))
 
     else:   # 3-DOF model (surge, sway and yaw)
         #C = [ 0             0            -M(2,2)*nu(2)-M(2,3)*nu(3)
         #      0             0             M(1,1)*nu(1)
         #      M(2,2)*nu(2)+M(2,3)*nu(3)  -M(1,1)*nu(1)          0  ]    
         C = np.zeros( (3,3) )
-        C[0,2] = -M[1,1] * nu[1] - M[1,2] * nu[2]
-        C[1,2] =  M[0,0] * nu[0]
-        C[2,0] = -C[0,2]
-        C[2,1] = -C[1,2]
+        C = C.at[0,2].set(-M[1,1] * nu[1] - M[1,2] * nu[2])
+        C = C.at[1,2].set(M[0,0] * nu[0])
+        C = C.at[2,0].set(-C[0,2])
+        C = C.at[2,1].set(-C[1,2])
 
     return C
 
@@ -346,15 +347,15 @@ def forceLiftDrag(b,S,CD_0,alpha,U_r):
         AR = b**2 / S       # wing aspect ratio
 
         # linear lift
-        CL_alpha = math.pi * AR / ( 1 + math.sqrt(1 + (AR/2)**2) )
+        CL_alpha = np.pi * AR / ( 1 + np.sqrt(1 + (AR/2)**2) )
         CL = CL_alpha * alpha
 
         # parasitic and induced drag
-        CD = CD_0 + CL**2 / (math.pi * e * AR)
+        CD = CD_0 + CL**2 / (np.pi * e * AR)
 
         # nonlinear lift (blending function)
         CL = (1-sigma) * CL + sigma * 2 * np.sign(alpha) \
-            * math.sin(alpha)**2 * math.cos(alpha)
+            * np.sin(alpha)**2 * np.cos(alpha)
 
         return CL, CD
 
@@ -366,9 +367,9 @@ def forceLiftDrag(b,S,CD_0,alpha,U_r):
 
     # transform from FLOW axes to BODY axes using angle of attack
     tau_liftdrag = np.array([
-        math.cos(alpha) * (-F_drag) - math.sin(alpha) * (-F_lift),
+        np.cos(alpha) * (-F_drag) - np.sin(alpha) * (-F_lift),
         0,
-        math.sin(alpha) * (-F_drag) + math.cos(alpha) * (-F_lift),
+        np.sin(alpha) * (-F_drag) + np.cos(alpha) * (-F_lift),
         0,
         0,
         0 ])
@@ -397,10 +398,10 @@ def gvect(W,B,theta,phi,r_bg,r_bb):
         使得物体恢复到平衡位置的力和力矩的线性近似。
     """
 
-    sth  = math.sin(theta)
-    cth  = math.cos(theta)
-    sphi = math.sin(phi)
-    cphi = math.cos(phi)
+    sth  = np.sin(theta)
+    cth  = np.cos(theta)
+    sphi = np.sin(phi)
+    cphi = np.cos(phi)
 
     g = np.array([
         (W-B) * sth,

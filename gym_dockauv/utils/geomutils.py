@@ -1,5 +1,6 @@
-import numpy as np
-
+# import numpy as np
+from jax import numpy as np
+import math
 
 def ssa(angle: np.ndarray) -> np.ndarray:
     r"""
@@ -30,6 +31,13 @@ def Rzyx(phi: float, theta: float, psi: float) -> np.ndarray:
     :param psi: euler angle around the z axis
     :return: array 3x3
     """
+    # cphi = math.cos(phi)
+    # sphi = math.sin(phi)
+    # cth = math.cos(theta)
+    # sth = math.sin(theta)
+    # cpsi = math.cos(psi)
+    # spsi = math.sin(psi)
+
     cphi = np.cos(phi)
     sphi = np.sin(phi)
     cth = np.cos(theta)

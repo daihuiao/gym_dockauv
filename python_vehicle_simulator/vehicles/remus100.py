@@ -46,8 +46,12 @@ References:
 Author:     Thor I. Fossen
 """
 import copy
+from functools import partial
+import jax
+# import numpy as np
+from jax import numpy as np
+import jax.lax as lax
 
-import numpy as np
 import math
 import sys
 from python_vehicle_simulator.lib.control import PIDpolePlacement
@@ -71,7 +75,162 @@ class remus100:
         V_c:    current speed (m/s)
         beta_c: current direction (deg)
     """
-
+    # DOF = 6  # degrees of freedom
+    #
+    # # Constants
+    # D2R = math.pi / 180  # deg2rad
+    # rho = 1026  # density of water (kg/m^3)
+    # g = 9.81  # acceleration of gravity (m/s^2)
+    #
+    # if controlSystem == "depthHeadingAutopilot":
+    #     controlDescription = (
+    #             "Depth and heading autopilots, z_d = "
+    #             + str(r_z)
+    #             + ", psi_d = "
+    #             + str(r_psi)
+    #             + " deg"
+    #     )
+    #
+    # else:
+    #     controlDescription = (
+    #         "Step inputs for stern planes, rudder and propeller")
+    #     controlSystem = "stepInput"
+    #
+    # ref_z = r_z
+    # ref_psi = r_psi
+    # ref_n = r_rpm
+    # V_c = V_current
+    # beta_c = beta_current * D2R
+    # controlMode = controlSystem
+    #
+    # # Initialize the AUV model
+    # name = (
+    #     "Remus 100 cylinder-shaped AUV (see 'remus100.py' for more details)")
+    # L = 1.6  # length (m)
+    # diam = 0.19  # cylinder diameter (m)
+    #
+    # nu = np.array([0, 0, 0, 0, 0, 0], float)  # velocity vector
+    # u_actual = np.array([0, 0, 0], float)  # control input vector
+    #
+    # controls = [
+    #     "Tail rudder (deg)",
+    #     "Stern plane (deg)",
+    #     "Propeller revolution (rpm)"
+    # ]
+    # dimU = len(controls)
+    #
+    # # Actuator dynamics
+    # deltaMax_r = 30 * D2R  # max rudder angle (rad)
+    # deltaMax_s = 30 * D2R  # max stern plane angle (rad)
+    # nMax = 1525  # max propeller revolution (rpm)
+    # T_delta = 1.0  # rudder/stern plane time constant (s)
+    # T_n = 1.0  # propeller time constant (s)
+    #
+    # if r_rpm < 0.0 or r_rpm > nMax:
+    #     sys.exit("The RPM value should be in the interval 0-%s", (nMax))
+    #
+    # if r_z > 100.0 or r_z < 0.0:
+    #     sys.exit('desired depth must be between 0-100 m')
+    #
+    #     # Hydrodynamics (Fossen 2021, Section 8.4.2)
+    # # S is a reference area usually chosen as the area of the vehicle as if it were projected down onto the ground below it.
+    # S = 0.7 * L * diam  # S = 70% of rectangle L * diam
+    # a = L / 2  # semi-axes
+    # b = diam / 2
+    # r_bg = np.array([0, 0, 0.02], float)  # CG w.r.t. to the CO
+    # r_bb = np.array([0, 0, 0], float)  # CB w.r.t. to the CO
+    #
+    # # Parasitic drag coefficient CD_0, i.e. zero lift and alpha = 0
+    # # F_drag = 0.5 * rho * Cd * (pi * b^2)
+    # # F_drag = 0.5 * rho * CD_0 * S
+    # Cd = 0.42  # from Allen et al. (2000)
+    # CD_0 = Cd * math.pi * b ** 2 / S
+    #
+    # # Rigid-body mass matrix expressed in CO
+    # m = 4 / 3 * math.pi * rho * a * b ** 2  # mass of spheriod
+    # Ix = (2 / 5) * m * b ** 2  # moment of inertia
+    # Iy = (1 / 5) * m * (a ** 2 + b ** 2)
+    # Iz = Iy
+    # MRB_CG = np.diag(np.array([m, m, m, Ix, Iy, Iz]))  # MRB expressed in the CG
+    # H_rg = Hmtrx(r_bg)
+    # MRB = H_rg.T @ MRB_CG @ H_rg  # MRB expressed in the CO # 61页上
+    #
+    # # Weight and buoyancy
+    # W = m * g
+    # B = W
+    #
+    # # Added moment of inertia in roll: A44 = r44 * Ix
+    # r44 = 0.3
+    # MA_44 = r44 * Ix  # ？
+    #
+    # # Lamb's k-factors
+    # e = math.sqrt(1 - (b / a) ** 2)
+    # alpha_0 = (2 * (1 - e ** 2) / pow(e, 3)) * (0.5 * math.log((1 + e) / (1 - e)) - e)
+    # beta_0 = 1 / (e ** 2) - (1 - e ** 2) / (2 * pow(e, 3)) * math.log((1 + e) / (1 - e))
+    #
+    # k1 = alpha_0 / (2 - alpha_0)
+    # k2 = beta_0 / (2 - beta_0)
+    # k_prime = pow(e, 4) * (beta_0 - alpha_0) / (
+    #         (2 - e ** 2) * (2 * e ** 2 - (2 - e ** 2) * (beta_0 - alpha_0)))
+    #
+    # # Added mass system matrix expressed in the CO
+    # MA = np.diag(np.array([m * k1, m * k2, m * k2, MA_44, k_prime * Iy, k_prime * Iy]))  # 8.84
+    #
+    # # Mass matrix including added mass
+    # M = MRB + MA
+    # Minv = np.linalg.inv(M)
+    #
+    # # Natural frequencies in roll and pitch
+    # w_roll = math.sqrt(W * (r_bg[2] - r_bb[2]) /
+    #                         M[3][3])
+    # w_pitch = math.sqrt(W * (r_bg[2] - r_bb[2]) /
+    #                          M[4][4])
+    #
+    # # Tail rudder parameters (single)
+    # # CL_delta_r = 0.5  # rudder lift coefficient
+    # # todo dai: 转弯太慢了，改了，很假，望州之
+    # CL_delta_r = 5  # rudder lift coefficient
+    # A_r = 2 * 0.10 * 0.05  # rudder area (m2)
+    # x_r = -a  # rudder x-position (m)
+    #
+    # # Stern-plane paramaters (double)
+    # # CL_delta_s = 0.7  # stern-plane lift coefficient
+    # # todo dai: 转弯太慢了，改了，很假，
+    # CL_delta_s = 7  # stern-plane lift coefficient
+    # A_s = 2 * 0.10 * 0.05  # stern-plane area (m2)
+    # x_s = -a  # stern-plane z-position (m)
+    #
+    # # Low-speed linear damping matrix parameters
+    # T_surge = 20  # time constant in surge (s)
+    # T_sway = 20  # time constant in sway (s)
+    # T_heave = T_sway  # equal for for a cylinder-shaped AUV
+    # zeta_roll = 0.3  # relative damping ratio in roll
+    # zeta_pitch = 0.8  # relative damping ratio in pitch
+    # T_yaw = 5  # time constant in yaw (s)
+    #
+    # # Heading autopilot
+    # wn_psi = 0.5  # PID pole placement parameters
+    # zeta_psi = 1
+    # r_max = 1 * math.pi / 180  # maximum yaw rate
+    # psi_d = 0  # position, velocity and acc. states
+    # r_d = 0
+    # a_d = 0
+    # wn_d = wn_psi / 5  # desired natural frequency
+    # zeta_d = 1  # desired realtive damping ratio
+    #
+    # e_psi_int = 0  # yaw angle error integral state
+    #
+    # # Depth autopilot
+    # wn_d_z = 1 / 20  # desired natural frequency, reference model
+    # Kp_z = 0.1  # heave proportional gain, outer loop
+    # T_z = 100.0  # heave integral gain, outer loop
+    # Kp_theta = 1.0  # pitch PID controller
+    # Kd_theta = 3.0
+    # Ki_theta = 0.1
+    #
+    # z_int = 0  # heave position integral state
+    # z_d = 0  # desired position, LP filter initial state
+    # theta_int = 0  # pitch angle integral state
     def __init__(
             self,
             controlSystem="stepInput",
@@ -157,7 +316,7 @@ class remus100:
         Ix = (2 / 5) * m * b ** 2  # moment of inertia
         Iy = (1 / 5) * m * (a ** 2 + b ** 2)
         Iz = Iy
-        MRB_CG = np.diag([m, m, m, Ix, Iy, Iz])  # MRB expressed in the CG
+        MRB_CG = np.diag(np.array([m, m, m, Ix, Iy, Iz]))  # MRB expressed in the CG
         H_rg = Hmtrx(self.r_bg)
         self.MRB = H_rg.T @ MRB_CG @ H_rg  # MRB expressed in the CO # 61页上
 
@@ -180,7 +339,7 @@ class remus100:
                 (2 - e ** 2) * (2 * e ** 2 - (2 - e ** 2) * (beta_0 - alpha_0)))
 
         # Added mass system matrix expressed in the CO
-        self.MA = np.diag([m * k1, m * k2, m * k2, MA_44, k_prime * Iy, k_prime * Iy])  # 8.84
+        self.MA = np.diag(np.array([m * k1, m * k2, m * k2, MA_44, k_prime * Iy, k_prime * Iy]))  # 8.84
 
         # Mass matrix including added mass
         self.M = self.MRB + self.MA
@@ -238,7 +397,9 @@ class remus100:
         self.z_d = 0  # desired position, LP filter initial state
         self.theta_int = 0  # pitch angle integral state
 
-    def dynamics(self, eta, nu, u_actual, u_control, sampleTime,nu_c):
+    @partial(jax.jit, static_argnums=(0))
+    @classmethod
+    def dynamics(cls, eta, nu, u_actual, u_control, sampleTime,nu_c):
         """
         [nu,u_actual] = dynamics(eta,nu,u_actual,u_control,sampleTime) integrates
         the AUV equations of motion using Euler's method.
@@ -271,9 +432,9 @@ class remus100:
         这种相互作用是动力学模拟中不可或缺的一部分，对于正确模拟和预测 AUV 的行为至关重要。
         """
         nu_r = nu - nu_c  # relative velocity
-        alpha = math.atan2(nu_r[2], nu_r[0])  # angle of attack
-        U = math.sqrt(nu[0] ** 2 + nu[1] ** 2 + nu[2] ** 2)  # vehicle speed
-        U_r = math.sqrt(nu_r[0] ** 2 + nu_r[1] ** 2 + nu_r[2] ** 2)  # relative speed
+        alpha = np.arctan2(nu_r[2], nu_r[0])  # angle of attack
+        U = np.sqrt(nu[0] ** 2 + nu[1] ** 2 + nu[2] ** 2)  # vehicle speed
+        U_r = np.sqrt(nu_r[0] ** 2 + nu_r[1] ** 2 + nu_r[2] ** 2)  # relative speed
 
         """     
         1.`u_c`和`v_c`分别计算了水流的纵向（surge）和横向（sway）速度分量，基于水流速度`self.V_c`和相对船舶航向的水流方向
@@ -297,31 +458,34 @@ class remus100:
         n = u_actual[2]  # actual propeller revolution (rpm)
 
         # Amplitude saturation of the control signals
-        if abs(delta_r) >= self.deltaMax_r:
-            delta_r = np.sign(delta_r) * self.deltaMax_r
+        # if abs(delta_r) >= self.deltaMax_r:
+        #     delta_r = np.sign(delta_r) * self.deltaMax_r
+        delta_r = np.clip(delta_r, -cls.deltaMax_r, cls.deltaMax_r)
 
-        if abs(delta_s) >= self.deltaMax_s:
-            delta_s = np.sign(delta_s) * self.deltaMax_s
+        # if abs(delta_s) >= self.deltaMax_s:
+        #     delta_s = np.sign(delta_s) * self.deltaMax_s
+        delta_s = np.clip(delta_s, -cls.deltaMax_s, cls.deltaMax_s)
 
-        if abs(n) >= self.nMax:
-            n = np.sign(n) * self.nMax
+        # if abs(n) >= self.nMax:
+        #     n = np.sign(n) * self.nMax
+        n = np.clip(n, -cls.nMax, cls.nMax)
 
             # Propeller coeffs. KT and KQ are computed as a function of advance no.
         # Ja = Va/(n*D_prop) where Va = (1-w)*U = 0.944 * U; Allen et al. (2000)
         D_prop = 0.14  # propeller diameter corresponding to 5.5 inches
         t_prop = 0.1  # thrust deduction number
-        n_rps = n / 60  # propeller revolution (rps) 
+        n_rps = n / 60  # propeller revolution (rps)
         Va = 0.944 * U  # advance speed (m/s)
 
         # Ja_max = 0.944 * 2.5 / (0.14 * 1525/60) = 0.6632
         Ja_max = 0.6632
 
         # Single-screw propeller with 3 blades and blade-area ratio = 0.718.
-        # Coffes. are computed using the Matlab MSS toolbox:     
+        # Coffes. are computed using the Matlab MSS toolbox:
         # >> [KT_0, KQ_0] = wageningen(0,1,0.718,3)
         KT_0 = 0.4566
         KQ_0 = 0.0700
-        # >> [KT_max, KQ_max] = wageningen(0.6632,1,0.718,3) 
+        # >> [KT_max, KQ_max] = wageningen(0.6632,1,0.718,3)
         KT_max = 0.1798
         KQ_max = 0.0312
 
@@ -336,37 +500,53 @@ class remus100:
 
         # Propeller thrust and propeller-induced roll moment
         # Linear approximations for positive Ja values
-        # KT ~= KT_0 + (KT_max-KT_0)/Ja_max * Ja   
-        # KQ ~= KQ_0 + (KQ_max-KQ_0)/Ja_max * Ja  
+        # KT ~= KT_0 + (KT_max-KT_0)/Ja_max * Ja
+        # KQ ~= KQ_0 + (KQ_max-KQ_0)/Ja_max * Ja
 
-        if n_rps > 0:  # forward thrust
-
-            X_prop = self.rho * pow(D_prop, 4) * (
+        # if n_rps > 0:  # forward thrust
+        #
+        #     X_prop = self.rho * pow(D_prop, 4) * (
+        #             KT_0 * abs(n_rps) * n_rps + (KT_max - KT_0) / Ja_max *
+        #             (Va / D_prop) * abs(n_rps))
+        #     K_prop = self.rho * pow(D_prop, 5) * (
+        #             KQ_0 * abs(n_rps) * n_rps + (KQ_max - KQ_0) / Ja_max *
+        #             (Va / D_prop) * abs(n_rps))
+        #
+        # else:  # reverse thrust (braking)
+        #
+        #     X_prop = self.rho * pow(D_prop, 4) * KT_0 * abs(n_rps) * n_rps
+        #     K_prop = self.rho * pow(D_prop, 5) * KQ_0 * abs(n_rps) * n_rps
+        def forward_thrust(n_rps):
+            X_prop = cls.rho * pow(D_prop, 4) * (
                     KT_0 * abs(n_rps) * n_rps + (KT_max - KT_0) / Ja_max *
                     (Va / D_prop) * abs(n_rps))
-            K_prop = self.rho * pow(D_prop, 5) * (
+            K_prop = cls.rho * pow(D_prop, 5) * (
                     KQ_0 * abs(n_rps) * n_rps + (KQ_max - KQ_0) / Ja_max *
                     (Va / D_prop) * abs(n_rps))
+            return X_prop, K_prop
 
-        else:  # reverse thrust (braking)
+        def reverse_thrust(n_rps):
+            X_prop = cls.rho * pow(D_prop, 4) * KT_0 * abs(n_rps) * n_rps
+            K_prop = cls.rho * pow(D_prop, 5) * KQ_0 * abs(n_rps) * n_rps
+            return X_prop, K_prop
 
-            X_prop = self.rho * pow(D_prop, 4) * KT_0 * abs(n_rps) * n_rps
-            K_prop = self.rho * pow(D_prop, 5) * KQ_0 * abs(n_rps) * n_rps
+        X_prop, K_prop = lax.cond(n_rps > 0, forward_thrust, reverse_thrust, n_rps)
+
         """        当螺旋桨正转（向前推进）时，代码计算螺旋桨产生的推力（X_prop）和由螺旋桨引起的滚转力矩（K_prop）：
         X_prop和K_prop的计算基于线性近似的推力系数（KT）和扭矩系数（KQ）。这些系数随着推进数（Ja）的变化而变化。
         KT和KQ通过插值计算得出，基于零推进数（KT_0，KQ_0）和最大推进数（KT_max，KQ_max）下的系数值。
         推力（X_prop）和扭矩（K_prop）分别是与螺旋桨直径的四次幂和五次幂成比例，考虑了水的密度、螺旋桨的转速和有效进速。"""
 
         # Rigi-body/added mass Coriolis/centripetal matrices expressed in the CO
-        CRB = m2c(self.MRB, nu_r)
-        CA = m2c(self.MA, nu_r)
+        CRB = m2c(cls.MRB, nu_r)
+        CA = m2c(cls.MA, nu_r)
 
-        # Nonlinear quadratic velocity terms in pitch and yaw (Munk moments) 
+        # Nonlinear quadratic velocity terms in pitch and yaw (Munk moments)
         # are set to zero since only linear damping is used
-        CA[4][0] = 0
-        CA[4][3] = 0
-        CA[5][0] = 0
-        CA[5][1] = 0
+        CA = CA.at[4,0].set(0)
+        CA = CA.at[4,3].set(0)
+        CA = CA.at[5,0].set(0)
+        CA = CA.at[5,1].set(0)
 
         C = CRB + CA
 
@@ -382,18 +562,18 @@ class remus100:
         C = CRB + CA：将刚体质量和附加质量相关的科里奥利 / 离心力矩阵相加，得到总的科里奥利 / 离心力矩阵C。"""
 
         # Dissipative forces and moments
-        D = np.diag([
-            self.M[0][0] / self.T_surge,
-            self.M[1][1] / self.T_sway,
-            self.M[2][2] / self.T_heave,
-            self.M[3][3] * 2 * self.zeta_roll * self.w_roll,
-            self.M[4][4] * 2 * self.zeta_pitch * self.w_pitch,
-            self.M[5][5] / self.T_yaw
-        ])
+        D = np.diag(np.array([
+            cls.M[0][0] / cls.T_surge * np.exp(-3 * U_r),
+            cls.M[1][1] / cls.T_sway * np.exp(-3 * U_r),
+            cls.M[2][2] / cls.T_heave,
+            cls.M[3][3] * 2 * cls.zeta_roll * cls.w_roll,
+            cls.M[4][4] * 2 * cls.zeta_pitch * cls.w_pitch,
+            cls.M[5][5] / cls.T_yaw * np.exp(-3 * U_r)
+        ]))
 
-        D[0][0] = D[0][0] * math.exp(-3 * U_r)  # For DOF 1,2,6 the D elements
-        D[1][1] = D[1][1] * math.exp(-3 * U_r)  # go to zero at higher speeds, i.e.
-        D[5][5] = D[5][5] * math.exp(-3 * U_r)  # drag and lift/drag dominate
+        # D[0][0] = D[0][0] * math.exp(-3 * U_r)  # For DOF 1,2,6 the D elements
+        # D[1][1] = D[1][1] * math.exp(-3 * U_r)  # go to zero at higher speeds, i.e.
+        # D[5][5] = D[5][5] * math.exp(-3 * U_r)  # drag and lift/drag dominate
 
         """        这段代码计算了耗散力和力矩矩阵D，它是一个对角矩阵，代表船舶在不同方向的阻尼效应：
         
@@ -402,19 +582,19 @@ class remus100:
         w_roll和w_pitch。对于偏航（yaw）运动，阻尼同样是质量矩阵的对应元素除以时间常数T_yaw。
         在一定速度下，纵向、横向和偏航的阻尼因子会因速度的增加而减小，这通过乘以exp(-3 * U_r)实现，其中U_r是相对速度。"""
 
-        tau_liftdrag = forceLiftDrag(self.diam, self.S, self.CD_0, alpha, U_r)  # 阻力 升力
-        tau_crossflow = crossFlowDrag(self.L, self.diam, self.diam, nu_r)  # 侧向水流（横流）作用下的阻力
+        tau_liftdrag = forceLiftDrag(cls.diam, cls.S, cls.CD_0, alpha, U_r)  # 阻力 升力
+        tau_crossflow = crossFlowDrag(cls.L, cls.diam, cls.diam, nu_r)  # 侧向水流（横流）作用下的阻力
 
         # Restoring forces and moments
-        g = gvect(self.W, self.B, eta[4], eta[3], self.r_bg, self.r_bb)  # 计算一个潜在水中物体在任意点CO（通常是质心或者流体动力中心）的恢复力矢量。
+        g = gvect(cls.W, cls.B, eta[4], eta[3], cls.r_bg, cls.r_bb)  # 计算一个潜在水中物体在任意点CO（通常是质心或者流体动力中心）的恢复力矢量。
 
         # Horizontal- and vertical-plane relative speed
-        U_rh = math.sqrt(nu_r[0] ** 2 + nu_r[1] ** 2)
-        U_rv = math.sqrt(nu_r[0] ** 2 + nu_r[2] ** 2)
+        U_rh = np.sqrt(nu_r[0] ** 2 + nu_r[1] ** 2)
+        U_rv = np.sqrt(nu_r[0] ** 2 + nu_r[2] ** 2)
 
         # Rudder and stern-plane drag
-        X_r = -0.5 * self.rho * U_rh ** 2 * self.A_r * self.CL_delta_r * delta_r ** 2
-        X_s = -0.5 * self.rho * U_rv ** 2 * self.A_s * self.CL_delta_s * delta_s ** 2
+        X_r = -0.5 * cls.rho * U_rh ** 2 * cls.A_r * cls.CL_delta_r * delta_r ** 2
+        X_s = -0.5 * cls.rho * U_rv ** 2 * cls.A_s * cls.CL_delta_s * delta_s ** 2
         """        这段代码计算了与舵（Rudder）和船尾平面（Stern-plane）相关的阻力。`U_rh` 是水平平面上的相对速度，
         结合了船舶前进速度和侧滑速度。`U_rv` 是垂直平面上的相对速度，结合了船舶前进速度和垂直速度。
         `X_r` 是因舵角而产生的阻力，而 `X_s` 是因船尾平面角而产生的阻力。这些阻力由流体动力学中的二次阻力公式计算得出，
@@ -422,11 +602,11 @@ class remus100:
         和阻力系数（`self.CL_delta_r` 对于舵，`self.CL_delta_s` 对于船尾平面）。这些阻力在船舶运动方程中起着重要作用，
         因为它们直接影响船舶的运动和所需的推进力。"""
 
-        # Rudder sway force 
-        Y_r = -0.5 * self.rho * U_rh ** 2 * self.A_r * self.CL_delta_r * delta_r
+        # Rudder sway force
+        Y_r = -0.5 * cls.rho * U_rh ** 2 * cls.A_r * cls.CL_delta_r * delta_r
 
         # Stern-plane heave force
-        Z_s = -0.5 * self.rho * U_rv ** 2 * self.A_s * self.CL_delta_s * delta_s
+        Z_s = -0.5 * cls.rho * U_rv ** 2 * cls.A_s * cls.CL_delta_s * delta_s
         """        Y_r 表示舵产生的侧向力（sway force），这个力使得船舶能够向左或向右移动（偏航）。Z_s 表示船尾平面产生的垂直力（heave force），
         这个力控制着船舶的上升或下沉（俯仰）。这两个力分别是通过改变水流方向，由舵和船尾平面在其相应的控制角度（delta_r 和 delta_s）下产生的。
         这些力对于航行器的稳定性和操控性至关重要，它们帮助航行器在水中保持预定的路径和深度。"""
@@ -437,8 +617,8 @@ class remus100:
             Y_r,
             Z_s,
             K_prop / 10,  # scaled down by a factor of 10 to match exp. results
-            self.x_s * Z_s,
-            self.x_r * Y_r
+            cls.x_s * Z_s,
+            cls.x_r * Y_r
         ], float)
         """        这段代码中的 tau 是一个广义力向量，包含了作用于船舶的力和力矩：
         第一项：(1-t_prop) * X_prop + X_r + X_s 是沿船舶前进方向的总力，考虑了螺旋桨推进力 X_prop，扣除了推进力减额系数 t_prop 的影响，
@@ -452,16 +632,16 @@ class remus100:
 
         # AUV dynamics
         tau_sum = tau + tau_liftdrag + tau_crossflow - np.matmul(C + D, nu_r) - g
-        nu_dot = Dnu_c + np.matmul(self.Minv, tau_sum)  # 牛顿第二定律，求a
+        nu_dot = Dnu_c + np.matmul(cls.Minv, tau_sum)  # 牛顿第二定律，求a
         """        tau_sum 是所有外力和力矩的总和。它包括前面计算的广义力 tau，升力和阻力 tau_liftdrag，横流阻力 tau_crossflow，以及由于船舶运动产生的科里奥利力
         和阻尼力（通过 C+D 乘以相对速度 nu_r 得到），最后减去重力和浮力产生的作用力 g。
         nu_dot 是船舶运动状态（速度和角速度）的变化率。Dnu_c 表示由于当前流体速度产生的影响，self.Minv 是船舶质量矩阵的逆，
         用于计算由于外部作用力 tau_sum 引起的加速度。"""
 
         # Actuator dynamics
-        delta_r_dot = (delta_r_c - delta_r) / self.T_delta
-        delta_s_dot = (delta_s_c - delta_s) / self.T_delta
-        n_dot = (n_c - n) / self.T_n
+        delta_r_dot = (delta_r_c - delta_r) / cls.T_delta
+        delta_s_dot = (delta_s_c - delta_s) / cls.T_delta
+        n_dot = (n_c - n) / cls.T_n
 
         """        这段代码描述了船舶操纵装置（舵、船尾平面和螺旋桨）的动态特性。delta_r_dot、delta_s_dot
         和n_dot分别是舵角、船尾平面角和螺旋桨转速的变化率。这些变化率计算基于期望值（delta_r_c、delta_s_c
@@ -489,6 +669,8 @@ class remus100:
         # Initialization of table used to store the simulation data
         self.simData = np.empty([0, 2 * self.DOF + 2 * self.dimU], float)
 
+    @jax.jit
+    @classmethod
     def remus_solver(self, u_control, eta, nu, nu_c, u_actual, N=5, sampleTime=0.02):
         # eta_old = copy.deepcopy(eta)
         for i in range(0, N ):
@@ -502,7 +684,7 @@ class remus100:
             # 欧拉方法计算位置和速度,函数里使用2.53进行坐标系转化
             eta = attitudeEuler(eta, nu, sampleTime)
 
-        self.t += N * sampleTime  # simulation time
+        # self.t += N * sampleTime  # simulation time
 
         # Store simulation time vector
         # simTime = np.arange(start=0, stop=self.t + sampleTime, step=sampleTime)[:, None]
@@ -512,8 +694,8 @@ class remus100:
 
         state_dot = np.zeros(12)
         # Kinematic Model
-        state_dot[:6] = geom.J(eta).dot(nu)
-        state_dot[6:] = nu_dot
+        state_dot = state_dot.at[:6].set(geom.J(eta).dot(nu))
+        state_dot = state_dot.at[6:].set(nu_dot)
         return np.concatenate((eta, nu), axis=0), u_actual, state_dot
 
     def stepInput(self, t):
