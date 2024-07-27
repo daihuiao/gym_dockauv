@@ -1,0 +1,82 @@
+logger:
+  base_exp_path: results
+  use_console: true
+  use_tb: false
+  use_json: false
+  use_neptune: false
+  use_wandb: false
+  kwargs:
+    project: null
+    tags:
+    - stoix
+    detailed_logging: false
+    json_path: null
+    upload_json_data: false
+  checkpointing:
+    save_model: false
+    save_args:
+      save_interval_steps: 1
+      max_to_keep: 1
+      keep_period: null
+      checkpoint_uid: null
+    load_model: false
+    load_args:
+      checkpoint_uid: ''
+arch:
+  seed: 42
+  update_batch_size: 1
+  total_num_envs: 1024
+  total_timesteps: 100000000.0
+  num_updates: null
+  evaluation_greedy: false
+  num_eval_episodes: 128
+  num_evaluation: 50
+  absolute_metric: true
+system:
+  system_name: ff_ppo
+  actor_lr: 0.0003
+  critic_lr: 0.0003
+  rollout_length: 16
+  epochs: 4
+  num_minibatches: 16
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.001
+  vf_coef: 1.0
+  max_grad_norm: 0.5
+  decay_learning_rates: false
+  standardize_advantages: true
+  kl_penalty_coef: 3.0
+network:
+  actor_network:
+    pre_torso:
+      _target_: stoix.networks.torso.MLPTorso
+      layer_sizes:
+      - 256
+      - 256
+      - 256
+      - 256
+      use_layer_norm: false
+      activation: silu
+    action_head:
+      _target_: stoix.networks.heads.NormalAffineTanhDistributionHead
+  critic_network:
+    pre_torso:
+      _target_: stoix.networks.torso.MLPTorso
+      layer_sizes:
+      - 256
+      - 256
+      - 256
+      - 256
+      use_layer_norm: false
+      activation: silu
+    critic_head:
+      _target_: stoix.networks.heads.ScalarCriticHead
+env:
+  env_name: gymnax
+  scenario:
+    name: Remus-v1
+    task_name: remus
+  kwargs: {}
+  eval_metric: episode_return
