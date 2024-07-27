@@ -160,3 +160,7 @@ result_files/
 *logs/
 *.gif
 haha/
+*/output
+*/outputs
+*/results
+
