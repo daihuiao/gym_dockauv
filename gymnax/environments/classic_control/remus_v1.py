@@ -21,6 +21,7 @@ import time
 from abc import abstractmethod
 from timeit import default_timer as timer
 from typing import Tuple, Optional, Union
+import numpy as np
 
 import gym
 from gym.spaces import Discrete, Box
@@ -45,9 +46,41 @@ import pickle
 
 logger = logging.getLogger(__name__)
 
-from remus100_env_base1 import remus100_base1
+from .remus100_env_base1 import remus100_base1
 
+def get_argument():
+    from gym_dockauv.config.env_config import PREDICT_CONFIG, MANUAL_CONFIG, TRAIN_CONFIG, REGISTRATION_DICT, \
+        TRAIN_CONFIG_remus_Karman
 
+    used_TRAIN_CONFIG = copy.deepcopy(TRAIN_CONFIG_remus_Karman)
+    used_TRAIN_CONFIG["vehicle"] = "remus100"
+    start_point = [-0, -10, 0]
+    goal_point = [-0, 10, 0]
+    used_TRAIN_CONFIG["start_point"] = start_point
+    used_TRAIN_CONFIG["goal_point"] = goal_point
+    used_TRAIN_CONFIG["bounding_box"] = [26, 18, 20]
+    # 计算二范数
+    used_TRAIN_CONFIG["max_dist_from_goal"] = jnp.linalg.norm(jnp.array(goal_point) - jnp.array(start_point))
+    used_TRAIN_CONFIG["dist_goal_reached_tol"] = 0.05 * jnp.linalg.norm(jnp.array(goal_point) - jnp.array(start_point))
+    used_TRAIN_CONFIG["max_timesteps"] = 999
+    used_TRAIN_CONFIG["title"] = "Training Run"
+
+    @dataclass
+    class args:
+        exp_name: str = os.path.basename(__file__)[: -len(".py")]
+        current_on: bool = True
+        tau: float = 0.5
+        w_velocity: float = 0.1
+        thruster_penalty: float = 1.0
+        thruster: float = 400
+        thruster_min: float = 0.
+
+    used_TRAIN_CONFIG["current_on"] = args.current_on
+    used_TRAIN_CONFIG["reward_factors"]["w_velocity"] = args.w_velocity
+    used_TRAIN_CONFIG["reward_factors"]["thruster_penalty"] = args.thruster_penalty
+    used_TRAIN_CONFIG["thruster"] = args.thruster
+    used_TRAIN_CONFIG["thruster_min"] = args.thruster_min
+    return used_TRAIN_CONFIG
 class Karmen_current():
     draw = False
 
@@ -86,7 +119,7 @@ class Karmen_current():
 
     def validate_input(self, input_val, min_val, max_val, name):
         def true_fun(_):
-            jax.debug.print(f"{name}error ******** error *************** error ************************* ")
+            # jax.debug.print(f"{name}error ******** error *************** error ************************* ")
             return jnp.array(1.0)
 
         def false_fun(_):
@@ -114,9 +147,10 @@ class Karmen_current():
         # 输入验证
         # jax.debug.print("haha{}", self.xx.min())
         # jax.debug.print("haha{}", input_x)
-        self.validate_input(input_x, self.xx.min(), self.xx.max(), "经度")
-        self.validate_input(input_y, self.yy.min(), self.yy.max(), "纬度")
-        self.validate_input(input_z, self.zz.min(), self.zz.max(), "高度")
+        # 不好使阿,这个 lax.cond 不管条件是真是假,直接进第一个函数,卧槽
+        # self.validate_input(input_x, self.xx.min(), self.xx.max(), "经度")
+        # self.validate_input(input_y, self.yy.min(), self.yy.max(), "纬度")
+        # self.validate_input(input_z, self.zz.min(), self.zz.max(), "高度")
 
         ind_x = jnp.sum(input_x >= self.xx) - 1
         ind_y = jnp.sum(input_y >= self.yy) - 1
@@ -439,7 +473,7 @@ class EnvParams(environment.EnvParams):
     gravity: float = 9.8
 
 
-class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
+class remus_v1(environment.Environment[EnvState, EnvParams]):
     """JAX Compatible version of remus100_env_v1 OpenAI gym environment.
 
     """
@@ -455,6 +489,7 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
 
         '''docking3d code'''
         # Basic config for logger
+        env_config = get_argument()
         self.config = env_config
 
         try:
@@ -472,7 +507,7 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         control_mode = 'joystick'
 
         if control_mode == 'joystick':
-            self.K_thrust = 20  # Reduced maximum thrust here as from [2] for restricting too fast movement
+            self.K_thrust = jnp.array(20)  # Reduced maximum thrust here as from [2] for restricting too fast movement
             # B Matrix calculated from assumption in direct control mode with low level control
             self._B = jnp.array([
                 [2.83, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -485,7 +520,10 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
             self.u_bound = jnp.array([
                 [-10, 10],
                 [-10, 10],
-                [0, 0], ])  # attention
+                [self.config["thruster_min"], self.config["thruster"]] ])  # attention
+            # low = jnp.concatenate((self.u_bound[:, 0][0:-1], jnp.array([self.config["thruster_min"]]))),
+            # high = jnp.concatenate((self.u_bound[:, 1][0:-1], jnp.array([self.config["thruster"]]))),
+
             # from C.-J. Wu and B. Eng, “6-DoF Modelling and Control of a Remotely Operated Vehicle,” p. 39.ff
         elif control_mode == 'direct':
             self.K_thrust = jnp.diag([40, 40, 40, 40, 40, 40, 40, 40])  # since each thruster is the same
@@ -514,12 +552,12 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         # self.auv.step_size = self.config["t_step_size"]
 
         # Set assumption values for vehicle max velocities from config
-        self.u_max = self.config["u_max"]
-        self.v_max = self.config["v_max"]
-        self.w_max = self.config["w_max"]
-        self.p_max = self.config["p_max"]
-        self.q_max = self.config["q_max"]
-        self.r_max = self.config["r_max"]
+        self.u_max = jnp.array(self.config["u_max"])
+        self.v_max = jnp.array(self.config["v_max"])
+        self.w_max = jnp.array(self.config["w_max"])
+        self.p_max = jnp.array(self.config["p_max"])
+        self.q_max = jnp.array(self.config["q_max"])
+        self.r_max = jnp.array(self.config["r_max"])
 
         # # Navigation errors
         # self.delta_d = 0
@@ -529,7 +567,7 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         # self.delta_heading_goal = 0  # This is the error for the heading that is required AT goal
 
         # Water current
-        self.current = Current(remus100_jax_v1.karmen_current)
+        self.current = Current(remus_v1.karmen_current)
         # self.nu_c = self.current(self.auv.attitude, position=self.auv.position)
 
         # Init radar sensor suite
@@ -565,11 +603,11 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         self.max_timesteps = self.config["max_timesteps"]
 
         # Rewards
-        self.reward_set = self.config["reward_set"]  # Chosen reward set
+        # self.reward_set = self.config["reward_set"]  # Chosen reward set
         self.n_rewards = 13 + 3  # Number helps to structure rewards
         self.n_cont_rewards = 8
         # self.last_reward = 0  # Last reward
-        self.last_reward_arr = jnp.zeros(self.n_rewards)  # This should reflect the dimension of the rewards parts
+        # self.last_reward_arr = jnp.zeros(self.n_rewards)  # This should reflect the dimension of the rewards parts
         # self.cumulative_reward = 0  # Current cumulative reward of agent
         # self.cum_reward_arr = jnp.zeros(self.n_rewards)
         # self.conditions = None  # Boolean array to see which conditions are true
@@ -604,7 +642,7 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         ])
 
         self.meta_data_done = self.meta_data_reward[self.n_cont_rewards:]
-        self.goal_constraints = []  # List of booleans for further contraints as soon as goal is reached
+        # self.goal_constraints = []  # List of booleans for further contraints as soon as goal is reached
         self.goal_location = None  # This needs to be defined in self.generate_environment
         self.start_location = None  # This needs to be defined in self.generate_environment
         self.dist_goal_reached_tol = self.config[
@@ -617,11 +655,11 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         self.heading_goal_reached = 0  # Heading at goal, pitch should be zero
 
         if "goal_point" in env_config:
-            self.goal_point_ = env_config["goal_point"]
+            self.goal_point_ = jnp.array(env_config["goal_point"])
         else:
             raise NotImplementedError
         if "start_point" in env_config:
-            self.start_point_ = env_config["start_point"]
+            self.start_point_ = jnp.array(env_config["start_point"])
 
         self.generate_environment()
 
@@ -641,6 +679,8 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         """Performs step transitions in the environment."""
         # key, key_use = jax.random.split(key, 2)
         # self.current.sim(key_use,V_c=xxx)
+        input_c = jnp.clip(action, -1., 1.)
+        action = self.u_bound[:, 0] + (self.u_bound[:, 1] - self.u_bound[:, 0]) * (input_c + 1) / 2
 
         u = action  # bug fixed ,why? 峨峨峨,我知道了，他原来的代码就有问题，sb3本来就会做一个去皈依化，而他可能之前用的其他算法库。
 
@@ -876,7 +916,7 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
             False
         ])
 
-        last_reward_arr_8_12 = jnp.array(conditions) * self.w_done
+        last_reward_arr_8_12 = jnp.sum(jnp.array(conditions) * self.w_done)
 
         # Just for analyzing purpose:
         # self.cum_reward_arr = self.cum_reward_arr + self.last_reward_arr
@@ -887,7 +927,7 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         velocity_reward = self.reward_factors["w_velocity"] * \
                           jnp.linalg.norm(envstate.state_dot[0:2])  # todo dai: 这里想用横向上的速度作为奖励，
         # last_reward_arr_13 = velocity_reward
-        reward += velocity_reward
+        # reward += velocity_reward
 
         # diff = self.goal_location - envstate.state[0:3]
         # delta_d = jnp.linalg.norm(diff)
@@ -902,20 +942,20 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         # self.last_reward_arr[15] = thruster_penalty
         reward += thruster_penalty
 
-        reward_useful = {
-            "goal": self.last_reward_arr[0],
-            "goal_theta": self.last_reward_arr[1],
-            "goal_psi": self.last_reward_arr[2],
-            "velocity": self.last_reward_arr[13],
-            "distance": self.last_reward_arr[14],
-            "thruster": self.last_reward_arr[15],
-
-            "done_reached": self.last_reward_arr[8],
-            "done_border": self.last_reward_arr[9],
-            "done_attitude": self.last_reward_arr[10],
-            "done_step": self.last_reward_arr[11],
-            "done_collision": self.last_reward_arr[12],
-        }
+        # reward_useful = {
+        #     "goal": last_reward_arr_0,
+        #     "goal_theta": last_reward_arr_1,
+        #     "goal_psi": last_reward_arr_2,
+        #     "velocity": last_reward_arr_13,
+        #     "distance": last_reward_arr_14,
+        #     "thruster": last_reward_arr_15,
+        #
+        #     "done_reached": last_reward_arr_8,
+        #     "done_border": last_reward_arr_9,
+        #     "done_attitude": last_reward_arr_10,
+        #     "done_step": last_reward_arr_11,
+        #     "done_collision": last_reward_arr_12,
+        # }
         # return reward, self.last_reward_arr,reward_useful
         return reward
 
@@ -990,7 +1030,7 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         # init_state = jax.random.uniform(key, minval=-0.05, maxval=0.05, shape=(4,))
 
         envstate = EnvState(
-            state=jnp.concatenate([self.auv_init_position, self.auv_init_attitude, jnp.array([0.0] * 6)]),
+            state=jnp.concatenate([self.auv_init_position+0.01*jax.random.normal(key,(3,)), self.auv_init_attitude, jnp.array([0.0] * 6)]),
             state_dot=jnp.array([0.0] * 12),
             last_state=jnp.concatenate([self.auv_init_position, self.auv_init_attitude, jnp.array([0.0] * 6)]),
             u_actual=jnp.array([0.0] * 3),
@@ -1014,14 +1054,23 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
             clipped = jnp.clip(x, min_val, max_val)
 
             def print_warning():
+
+
                 jax.debug.print(f"error_my: Clipping occurred in '{name}'{x}")
+
+                # def haha():
+                #     jax.debug.print(f"error_my: !!!double error!!!Clipping occurred in '{name}'{x}")
+                #     return clipped
+                # jax.lax.cond(jnp.any(x>2.0), haha, lambda: clipped)
+                # jax.lax.cond(jnp.any(x<-2.0), haha, lambda: clipped)
                 return clipped
 
-            return jax.lax.cond(jnp.any(clipped != x), print_warning, lambda: clipped)
-        
+            # return jax.lax.cond(jnp.any(clipped != x), print_warning, lambda: clipped)
+            return clipped
+
         # obs = jnp.zeros(self.n_observations, dtype=jnp.float32)
         # Distance from goal, contained within max_dist_from_goal before done
-        obs_0 = custom_clip(1 - (jnp.log(delta_d / self.max_dist_from_goal) / jnp.log(
+        obs_0 = custom_clip(1 - (jnp.log(0.5 * delta_d / self.max_dist_from_goal) / jnp.log(
             self.dist_goal_reached_tol / self.max_dist_from_goal)), 0, 1,"obs_0")
         # Pitch error delta_psi, will be between +90° and -90°
         obs_1 = custom_clip(delta_theta / (jnp.pi / 2), -1, 1,"obs_1")
@@ -1029,29 +1078,29 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         # since it might be good to directly indicate which way to turn is faster to adjust heading
         obs_2 = custom_clip(delta_psi / jnp.pi, -1, 1,"obs_2")
 
-        obs_13 = custom_clip(envstate.nu_c[0] / 2, -1, 1,"obs_13")  # Assuming in general current max. speed of 2m/s
-        obs_14 = custom_clip(envstate.nu_c[1] / 2, -1, 1,"obs_14")
-        obs_15 = custom_clip(envstate.nu_c[2] / 2, -1, 1,"obs_15")
+        obs_3 = custom_clip(envstate.nu_c[0] / 2, -1, 1,"obs_3")  # Assuming in general current max. speed of 2m/s
+        obs_4 = custom_clip(envstate.nu_c[1] / 2, -1, 1,"obs_4")
+        obs_5 = custom_clip(envstate.nu_c[2] / 2, -1, 1,"obs_5")
 
         # ??? 竟然没有添加自身位置到obs里，amazing
-        obs_16 = custom_clip(envstate.state[0] / self.bounding_box[0], -1, 1,"obs_16")
-        obs_17 = custom_clip(envstate.state[1] / self.bounding_box[1], -1, 1,"obs_17")
-        obs_18 = custom_clip(envstate.state[2] / self.bounding_box[2], -1, 1,"obs_18")
-        obs_6 = custom_clip(envstate.state[3] / self.max_attitude, -1, 1, "obs_6")  # Roll
+        obs_6 = custom_clip(envstate.state[0] / self.bounding_box[0], -1, 1,"obs_6")
+        obs_7 = custom_clip(envstate.state[1] / self.bounding_box[1], -1, 1,"obs_7")
+        obs_8 = custom_clip(envstate.state[2] / self.bounding_box[2], -1, 1,"obs_8")
+        obs_9 = custom_clip(envstate.state[3] / self.max_attitude, -1, 1, "obs_9")  # Roll
         # obs_6 = custom_clip(self.auv.attitude[0] / self.max_attitude, -1, 1)  # Roll
-        obs_7 = custom_clip(envstate.state[4] / self.max_attitude, -1, 1, "obs_7")  # Pitch
-        obs_8 = custom_clip(jnp.sin(envstate.state[5]), -1, 1, "obs_8")  # Yaw, expressed in two polar values to make
-        obs_9 = custom_clip(jnp.cos(envstate.state[5]), -1, 1,
-                            "obs_9")  # sure observation does not jump between -1 and 1
+        obs_10 = custom_clip(envstate.state[4] / self.max_attitude, -1, 1, "obs_10")  # Pitch
+        obs_11 = custom_clip(jnp.sin(envstate.state[5]), -1, 1, "obs_11")  # Yaw, expressed in two polar values to make
+        obs_12 = custom_clip(jnp.cos(envstate.state[5]), -1, 1,
+                            "obs_12")  # sure observation does not jump between -1 and 1
         # Deprecated, goal constraints removed - Erik, 30.06.2022
         # obs[3] = custom_clip(self.delta_heading_goal / jnp.pi, -1, 1)  # delta_psi_g, heading error for docking into goal
-        obs_3 = custom_clip(envstate.state[6] / self.u_max, -1, 1,"obs_3")  # Surge Forward speed
+        obs_13 = custom_clip(envstate.state[6] / self.u_max, -1, 1,"obs_13")  # Surge Forward speed
         # obs_3 = custom_clip(self.auv.relative_velocity[0] / self.u_max, -1, 1)  # Surge Forward speed
-        obs_4 = custom_clip(envstate.state[7] / self.v_max, -1, 1,"obs_4")  # Sway Side speed
-        obs_5 = custom_clip(envstate.state[8] / self.w_max, -1, 1,"obs_5")  # Heave Vertical speed
-        obs_10 = custom_clip(envstate.state[9] / self.p_max, -1, 1,"obs_10")  # Angular Velocities, roll rate
-        obs_11 = custom_clip(envstate.state[10] / self.q_max, -1, 1,"obs_11")  # pitch rate
-        obs_12 = custom_clip(envstate.state[11] / self.r_max, -1, 1,"obs_12")  # Yaw rate
+        obs_14 = custom_clip(envstate.state[7] / self.v_max, -1, 1,"obs_14")  # Sway Side speed
+        obs_15 = custom_clip(envstate.state[8] / self.w_max, -1, 1,"obs_15")  # Heave Vertical speed
+        obs_16 = custom_clip(envstate.state[9] / self.p_max, -1, 1,"obs_16")  # Angular Velocities, roll rate
+        obs_17 = custom_clip(envstate.state[10] / self.q_max, -1, 1,"obs_17")  # pitch rate
+        obs_18 = custom_clip(envstate.state[11] / self.r_max, -1, 1,"obs_18")  # Yaw rate
 
 
         # def true_fn():
@@ -1088,23 +1137,6 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         # self.delta_d 表示的是 AUV 与目标位置之间的距离
         delta_d = jnp.linalg.norm(diff)
 
-        # conditions = [
-        #     # Condition 0: Check if close to the goal
-        #     delta_d < self.dist_goal_reached_tol,
-        #     # Condition 1: Check if out of bounds for position
-        #     # self.delta_d > self.max_dist_from_goal,
-        #     abs(envstate.state[0]) > self.bounding_box[0] or
-        #     abs(envstate.state[1]) > self.bounding_box[1] or
-        #     abs(envstate.state[2]) > self.bounding_box[2],
-        #     # Condition 2: Check if attitude (pitch, roll) too high
-        #     # np.any(np.abs(self.auv.attitude[:2]) > self.max_attitude),
-        #     False,
-        #     # Condition 3: Check if maximum time steps reached
-        #     envstate.time >= self.max_timesteps,
-        #     # Condition 4: Collision with obstacle (is updated earlier)
-        #     # self.collision
-        #     False
-        # ]
         out_of_bounds = jnp.logical_or(
             jnp.logical_or(jnp.abs(envstate.state[0]) > self.bounding_box[0],
                            jnp.abs(envstate.state[1]) > self.bounding_box[1]),
@@ -1130,13 +1162,22 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         done = jnp.any(conditions)  # To satisfy environment checker
 
         def true_fn_0():
-            jax.debug.print("Goal reached, steps: {}", envstate.time)
+            # jax.debug.print("Goal reached, steps: {}", envstate.time)
+            # print("Goal reached, steps: {}", envstate.time)
+            pass
+
+        def false_fn_0():
+            # jax.debug.print("Goal donot reached, steps: {}", envstate.time)
+            # print("Goal donot reached, steps: {}", envstate.time)
+            pass
+
 
         def true_fn_2():
-            jax.debug.print("Attitude too high, steps:{} ", envstate.time)
-
-        jax.lax.cond(conditions[0], true_fn_0, lambda: None)
-        jax.lax.cond(conditions[2], true_fn_2, lambda: None)
+            # jax.debug.print("Attitude too high, steps:{} ", envstate.time)
+            pass
+        # jax.lax.cond(conditions[0], true_fn_0, lambda: None)
+        # jax.lax.cond(jnp.any(conditions[0]), true_fn_0, false_fn_0)
+        # jax.lax.cond(conditions[2], true_fn_2, lambda: None)
         #     # If goal reached
         #     if conditions[0]:
         #         goal_reached = True
@@ -1151,7 +1192,7 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
     @property
     def name(self) -> str:
         """Environment name."""
-        return "remus100_jax_v1"
+        return "remus_v1"
 
     @property
     def num_actions(self) -> int:
@@ -1165,8 +1206,8 @@ class remus100_jax_v1(environment.Environment[EnvState, EnvParams]):
         """Action space of the environment."""
 
         return spaces.Box(
-            low=jnp.concatenate((self.u_bound[:, 0][0:-1], jnp.array([self.config["thruster_min"]]))),
-            high=jnp.concatenate((self.u_bound[:, 1][0:-1], jnp.array([self.config["thruster"]]))),
+            low=jnp.array([-1.,-1.,-1.]),
+            high=jnp.array([1.,1.,1.]),
             shape=(3,), dtype=jnp.float32
         )
 
@@ -1258,14 +1299,6 @@ if __name__ == '__main__':  # todo bug solve
     @dataclass
     class args:
         exp_name: str = os.path.basename(__file__)[: -len(".py")]
-        # to be filled in runtime
-        batch_size: int = 0
-        """the batch size (computed in runtime)"""
-        minibatch_size: int = 0
-        """the mini-batch size (computed in runtime)"""
-        num_iterations: int = 0
-        """the number of iterations (computed in runtime)"""
-
         current_on: bool = True
         tau: float = 0.5
 
@@ -1281,8 +1314,8 @@ if __name__ == '__main__':  # todo bug solve
     used_TRAIN_CONFIG["thruster"] = args.thruster
     used_TRAIN_CONFIG["thruster_min"] = args.thruster_min
 
-    environment = remus100_jax_v1(used_TRAIN_CONFIG)
-    key = jax.random.PRNGKey(0)
+    environment = remus_v1(used_TRAIN_CONFIG)
+    key_true = jax.random.PRNGKey(0)
     initial_state = EnvState(
         state=jnp.zeros(12),  # Assuming a state vector of length 12
         state_dot=jnp.zeros(12),
@@ -1294,6 +1327,7 @@ if __name__ == '__main__':  # todo bug solve
     action = jnp.array([1.0, 0.0, 1.0])  # Dummy action
     params = EnvParams()
 
+    key_true ,key = jax.random.split(key_true, 2)
     obs, new_state, reward, done, info = environment.step_env(key, initial_state, action, params)
     print("Observation:", obs)
     print("New State:", new_state)
@@ -1301,17 +1335,23 @@ if __name__ == '__main__':  # todo bug solve
     print("Done:", done)
     print("Info:", info)
 
+    key_true ,key = jax.random.split(key_true, 2)
     obs, state = environment.reset(key, params)
     print("reset:")
     print("Observation:", obs)
     print("State:", state)
 
+    key_true ,key = jax.random.split(key_true, 2)
     obs, new_state, reward, done, info = environment.step(key, initial_state, action, params)
     print("step")
     print("Observation:", obs)
     print("reward",reward)
     print("Done:", done)
     print("Info:", info)
+
+    key_true ,key = jax.random.split(key_true, 2)
+    action = environment.action_space(params).sample(key)
+    print("Action:", action)
 
     print("******************")
 

@@ -44,12 +44,12 @@ class remus100_base1:
             V_current=0,
             beta_current=0,
     ):
-        self.DOF = 6  # degrees of freedom
+        self.DOF = jnp.array(6)  # degrees of freedom
 
         # Constants
         self.D2R = jnp.pi / 180  # deg2rad
-        self.rho = 1026  # density of water (kg/m^3)
-        g = 9.81  # acceleration of gravity (m/s^2)
+        self.rho = jnp.array(1026)  # density of water (kg/m^3)
+        g = jnp.array(9.81)  # acceleration of gravity (m/s^2)
 
         if controlSystem == "depthHeadingAutopilot":
             self.controlDescription = (
@@ -65,10 +65,10 @@ class remus100_base1:
                 "Step inputs for stern planes, rudder and propeller")
             controlSystem = "stepInput"
 
-        self.ref_z = r_z
-        self.ref_psi = r_psi
-        self.ref_n = r_rpm
-        self.V_c = V_current
+        self.ref_z = jnp.array(r_z)
+        self.ref_psi = jnp.array(r_psi)
+        self.ref_n = jnp.array(r_rpm)
+        self.V_c = jnp.array(V_current)
         self.beta_c = beta_current * self.D2R
         self.controlMode = controlSystem
 
