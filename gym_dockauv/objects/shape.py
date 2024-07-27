@@ -1,5 +1,6 @@
-import numpy as np
+# import numpy as jnp
 from abc import ABC, abstractmethod
+import jax.numpy as jnp
 from functools import cached_property
 
 from typing import List
@@ -10,11 +11,11 @@ class Shape(ABC):
     This is a base class for any shape, should always contain center coordinates of position.
     """
 
-    def __init__(self, position: np.ndarray):
-        self.position = np.array(position)
+    def __init__(self, position: jnp.ndarray):
+        self.position = jnp.array(position)
 
     @abstractmethod
-    def get_plot_variables(self) -> List[List[np.ndarray]]:
+    def get_plot_variables(self) -> List[List[jnp.ndarray]]:
         """
         Function that returns the plot variables for the matplotlib axes.surface_plot() function
 
@@ -28,11 +29,11 @@ class Sphere(Shape):
     Represents a sphere
     """
 
-    def __init__(self, position: np.ndarray, radius: float):
+    def __init__(self, position: jnp.ndarray, radius: float):
         super().__init__(position)  # Call inherited init functions and then add to it
         self.radius = radius
 
-    def get_plot_variables(self) -> List[List[np.ndarray]]:
+    def get_plot_variables(self) -> List[List[jnp.ndarray]]:
         x_c, y_c, z_c = self.get_plot_shape(self.radius)
         return [[self.position[0] + x_c,
                  self.position[1] + y_c,
@@ -49,10 +50,10 @@ class Sphere(Shape):
         :param sweep2: second sweep of mesh
         :return: x, y, z coordinates for plotting function
         """
-        u, v = np.mgrid[0:scale * np.pi:sweep1 * 1j, 0:2 * np.pi:sweep2 * 1j]
-        x_c = radius * np.sin(u) * np.cos(v)
-        y_c = radius * np.sin(u) * np.sin(v)
-        z_c = radius * np.cos(u)
+        u, v = jnp.mgrid[0:scale * jnp.pi:sweep1 * 1j, 0:2 * jnp.pi:sweep2 * 1j]
+        x_c = radius * jnp.sin(u) * jnp.cos(v)
+        y_c = radius * jnp.sin(u) * jnp.sin(v)
+        z_c = radius * jnp.cos(u)
         return x_c, y_c, z_c
 
 
@@ -67,8 +68,8 @@ class Spheres:
 
     def __init__(self, spheres: List[Sphere]):
         l = len(spheres)
-        self.position = np.zeros((l, 3))
-        self.radius = np.zeros(l)
+        self.position = jnp.zeros((l, 3))
+        self.radius = jnp.zeros(l)
         self.objs = []
         for count, sphere in enumerate(spheres):
             self.position[count, :] = sphere.position
@@ -95,7 +96,7 @@ class Capsule(Shape):
 
     """
 
-    def __init__(self, position: np.ndarray, radius: float, vec_top: np.ndarray):
+    def __init__(self, position: jnp.ndarray, radius: float, vec_top: jnp.ndarray):
         """
 
         :param position: Position of center of capsule
@@ -107,7 +108,7 @@ class Capsule(Shape):
         self.vec_top = vec_top
         self.vec_bot = self.position - (self.vec_top - self.position)
 
-    def get_plot_variables(self) -> List[List[np.ndarray]]:
+    def get_plot_variables(self) -> List[List[jnp.ndarray]]:
         x_c, y_c, z_c = self.get_plot_shape_cyl
         return [[x_c, y_c, z_c], *self.get_plot_shape_sph]
 
@@ -129,44 +130,44 @@ class Capsule(Shape):
         v = self.vec_top - self.vec_bot
 
         # find magnitude of vector
-        mag = np.linalg.norm(v)
+        mag = jnp.linalg.norm(v)
 
         # unit vector in direction of axis
         v = v / mag
 
         # make some vector not in the same direction as v
-        not_v = np.array([1, 0, 0])
+        not_v = jnp.array([1, 0, 0])
         if (v == not_v).all():
-            not_v = np.array([0, 1, 0])
+            not_v = jnp.array([0, 1, 0])
 
         # make vector perpendicular to v
-        n1 = np.cross(v, not_v)
+        n1 = jnp.cross(v, not_v)
         # normalize n1
-        n1 /= np.linalg.norm(n1)
+        n1 /= jnp.linalg.norm(n1)
 
         # make unit vector perpendicular to v and n1
-        n2 = np.cross(v, n1)
+        n2 = jnp.cross(v, n1)
 
         # surface ranges over t from 0 to length of axis and 0 to 2*pi
-        t = np.linspace(0, mag, 2)
-        theta = np.linspace(0, 2 * np.pi, 20)
-        rsample = np.linspace(0, self.radius, 2)
+        t = jnp.linspace(0, mag, 2)
+        theta = jnp.linspace(0, 2 * jnp.pi, 20)
+        rsample = jnp.linspace(0, self.radius, 2)
 
         # use meshgrid to make 2d arrays
-        t, theta2 = np.meshgrid(t, theta)
+        t, theta2 = jnp.meshgrid(t, theta)
 
-        # rsample, theta = np.meshgrid(rsample, theta)
+        # rsample, theta = jnp.meshgrid(rsample, theta)
 
         # generate coordinates for surface
         # "Tube"
         x_c, y_c, z_c = [
-            self.vec_bot[i] + v[i] * t + self.radius * np.sin(theta2) * n1[i] + self.radius * np.cos(theta2) * n2[i] for
+            self.vec_bot[i] + v[i] * t + self.radius * jnp.sin(theta2) * n1[i] + self.radius * jnp.cos(theta2) * n2[i] for
             i in [0, 1, 2]]
 
         return x_c, y_c, z_c
 
 
-def collision_sphere_sphere(pos1: np.ndarray, rad1: float, pos2: np.ndarray, rad2: float) -> bool:
+def collision_sphere_sphere(pos1: jnp.ndarray, rad1: float, pos2: jnp.ndarray, rad2: float) -> bool:
     """
     Determining whether two sphere objects collide
 
@@ -176,10 +177,10 @@ def collision_sphere_sphere(pos1: np.ndarray, rad1: float, pos2: np.ndarray, rad
     :param rad2: radius of second object
     :return: returns true for collision
     """
-    return np.linalg.norm(pos1 - pos2) <= rad1 + rad2
+    return jnp.linalg.norm(pos1 - pos2) <= rad1 + rad2
 
 
-def collision_sphere_spheres(pos1: np.ndarray, rad1: float, pos2: np.ndarray, rad2: np.ndarray) -> bool:
+def collision_sphere_spheres(pos1: jnp.ndarray, rad1: float, pos2: jnp.ndarray, rad2: jnp.ndarray) -> bool:
     """
     Determining whether one sphere 1 collides with any of multiple spheres
 
@@ -189,11 +190,11 @@ def collision_sphere_spheres(pos1: np.ndarray, rad1: float, pos2: np.ndarray, ra
     :param rad2: radius of all other spheres
     :return: returns true if collision
     """
-    return np.any(np.linalg.norm(pos2 - pos1[None, :], axis=1) <= rad1 + rad2)
+    return jnp.any(jnp.linalg.norm(pos2 - pos1[None, :], axis=1) <= rad1 + rad2)
 
 
-def collision_capsule_sphere(cap1: np.ndarray, cap2: np.ndarray, cap_rad: float,
-                             sph_pos: np.ndarray, sph_rad: float) -> bool:
+def collision_capsule_sphere(cap1: jnp.ndarray, cap2: jnp.ndarray, cap_rad: float,
+                             sph_pos: jnp.ndarray, sph_rad: float) -> bool:
     """
     Determining whether a cylinder collides with a sphere
 
@@ -210,7 +211,7 @@ def collision_capsule_sphere(cap1: np.ndarray, cap2: np.ndarray, cap_rad: float,
     return dist <= cap_rad + sph_rad
 
 
-def intersec_dist_line_sphere(l1: np.ndarray, ld: np.ndarray, center: np.ndarray, rad: float):
+def intersec_dist_line_sphere(l1: jnp.ndarray, ld: jnp.ndarray, center: jnp.ndarray, rad: float):
     """
     From: https://iquilezles.org/articles/intersectors/
 
@@ -221,18 +222,18 @@ def intersec_dist_line_sphere(l1: np.ndarray, ld: np.ndarray, center: np.ndarray
     :param rad: radius of the sphere
     """
 
-    oc = l1 - center  # type: np.ndarray
-    rd = ld / np.linalg.norm(ld)
-    b = np.dot(oc, rd)  # will be float
-    c = np.dot(oc, oc) - rad * rad  # will be float
+    oc = l1 - center  # type: jnp.ndarray
+    rd = ld / jnp.linalg.norm(ld)
+    b = jnp.dot(oc, rd)  # will be float
+    c = jnp.dot(oc, oc) - rad * rad  # will be float
     h = b * b - c  # float
     if h < 0.0:
-        return -np.inf  # no intersection
-    h = np.sqrt(h)
+        return -jnp.inf  # no intersection
+    h = jnp.sqrt(h)
     return min([-b + h, -b - h], key=abs)
 
 
-def intersec_dist_lines_spheres_vectorized(l1: np.ndarray, ld: np.ndarray, center: np.ndarray, rad: np.ndarray):
+def intersec_dist_lines_spheres_vectorized(l1: jnp.ndarray, ld: jnp.ndarray, center: jnp.ndarray, rad: jnp.ndarray):
     """
     Adapted from: https://iquilezles.org/articles/intersectors/
 
@@ -250,21 +251,21 @@ def intersec_dist_lines_spheres_vectorized(l1: np.ndarray, ld: np.ndarray, cente
 
     # array(3,) between each start point and center
     oc = l1[:, None] - center  # array(nl, ns, 3)
-    rd = ld / np.linalg.norm(ld, axis=1)[:, None]  # array(nl, 3)
+    rd = ld / jnp.linalg.norm(ld, axis=1)[:, None]  # array(nl, 3)
     # (nl, ns, 3) . (3, nl) -> (nl, ns, nl); then taking diagonal -> (nl, ns, 1)
-    b = np.dot(oc, rd.T)[range(rd.shape[0]), :, range(rd.shape[0])] #np.diagonal(np.dot(oc, rd.T), axis1=1, axis2=2)
+    b = jnp.dot(oc, rd.T)[range(rd.shape[0]), :, range(rd.shape[0])] #np.diagonal(jnp.dot(oc, rd.T), axis1=1, axis2=2)
     # (nl, ns, 3) . (3, ns, nl) -> (nl, ns, nl); then taking diagonal -> (nl, ns, 1)
-    c = np.linalg.norm(oc, axis=2)**2 - rad**2
+    c = jnp.linalg.norm(oc, axis=2)**2 - rad**2
     h = b * b - c  # float
-    h[h < 0.0] = -np.inf  # no intersection at these points
+    h[h < 0.0] = -jnp.inf  # no intersection at these points
     mask = h >= 0.0
-    h[mask] = np.sqrt(h[mask])
-    res = np.minimum(-b + h, -b - h)  # This would not work if starting point is within sphere
+    h[mask] = jnp.sqrt(h[mask])
+    res = jnp.minimum(-b + h, -b - h)  # This would not work if starting point is within sphere
     # Only return the closest positive distance, otherwise it is just a random negative value (of 1st intersec)
-    return res[np.arange(res.shape[0]), np.where(res > 0, res, np.inf).argmin(axis=1)]
+    return res[jnp.arange(res.shape[0]), jnp.where(res > 0, res, jnp.inf).argmin(axis=1)]
 
 
-def intersec_dist_line_capsule(l1: np.ndarray, ld: np.ndarray, cap1: np.ndarray, cap2: np.ndarray,
+def intersec_dist_line_capsule(l1: jnp.ndarray, ld: jnp.ndarray, cap1: jnp.ndarray, cap2: jnp.ndarray,
                                cap_rad: float) -> float:
     """
     return closest distance from starting point to intersection of capsule, otherwise returns -np.inf if no intersection
@@ -289,17 +290,17 @@ def intersec_dist_line_capsule(l1: np.ndarray, ld: np.ndarray, cap1: np.ndarray,
     ba = cap2 - cap1
     oa = l1 - cap1
     # direction of vector as unit vector
-    rd = ld / np.linalg.norm(ld)
+    rd = ld / jnp.linalg.norm(ld)
 
-    baba = np.dot(ba, ba)
+    baba = jnp.dot(ba, ba)
 
-    bard = np.dot(ba, rd)
+    bard = jnp.dot(ba, rd)
 
-    baoa = np.dot(ba, oa)
+    baoa = jnp.dot(ba, oa)
 
-    rdoa = np.dot(rd, oa)
+    rdoa = jnp.dot(rd, oa)
 
-    oaoa = np.dot(oa, oa)
+    oaoa = jnp.dot(oa, oa)
 
     a = baba - bard * bard
 
@@ -309,23 +310,23 @@ def intersec_dist_line_capsule(l1: np.ndarray, ld: np.ndarray, cap1: np.ndarray,
 
     h = b * b - a * c
     if h >= 0.0:
-        t = (-b - np.sqrt(h)) / a
+        t = (-b - jnp.sqrt(h)) / a
         y = baoa + t * bard
         # body
         if 0.0 < y < baba:
             return t
         # caps
         oc = oa if y <= 0.0 else l1 - cap2
-        b = np.dot(rd, oc)
-        c = np.dot(oc, oc) - cap_rad * cap_rad
+        b = jnp.dot(rd, oc)
+        c = jnp.dot(oc, oc) - cap_rad * cap_rad
         h2 = b * b - c
         if h2 > 0.0:
-            return -b - np.sqrt(h2)
-    return -np.inf
+            return -b - jnp.sqrt(h2)
+    return -jnp.inf
 
 
-def intersec_dist_line_capsule_vectorized(l1: np.ndarray, ld: np.ndarray, cap1: np.ndarray, cap2: np.ndarray,
-                                          cap_rad: float, default: float = -np.inf) -> np.ndarray:
+def intersec_dist_line_capsule_vectorized(l1: jnp.ndarray, ld: jnp.ndarray, cap1: jnp.ndarray, cap2: jnp.ndarray,
+                                          cap_rad: float, default: float = -jnp.inf) -> jnp.ndarray:
     """
     Return the closest distance for multiple lines defined as in l1 and ld and find the shortest distances for ONE
     capsule
@@ -341,17 +342,17 @@ def intersec_dist_line_capsule_vectorized(l1: np.ndarray, ld: np.ndarray, cap1: 
     ba = (cap2 - cap1)
     oa = l1 - cap1
     # direction of vector as unit vector
-    rd = ld / np.linalg.norm(ld, axis=1)[:, None]
+    rd = ld / jnp.linalg.norm(ld, axis=1)[:, None]
 
-    baba = np.dot(ba, ba)
+    baba = jnp.dot(ba, ba)
 
-    bard = np.dot(rd, ba)
+    bard = jnp.dot(rd, ba)
 
-    baoa = np.dot(oa, ba)
+    baoa = jnp.dot(oa, ba)
 
-    rdoa = np.diag(np.dot(rd, oa.T))
+    rdoa = jnp.diag(jnp.dot(rd, oa.T))
 
-    oaoa = np.diag(np.dot(oa, oa.T))
+    oaoa = jnp.diag(jnp.dot(oa, oa.T))
 
     a = baba - bard * bard
 
@@ -361,36 +362,36 @@ def intersec_dist_line_capsule_vectorized(l1: np.ndarray, ld: np.ndarray, cap1: 
 
     h = b * b - a * c
 
-    res = np.zeros(l1.shape[0])
+    res = jnp.zeros(l1.shape[0])
 
     # Vectorize conditional statements
     mask_h = h >= 0
-    t = np.zeros(h.shape[0])
-    t[~mask_h] = -np.inf
-    t[mask_h] = (-b[mask_h] - np.sqrt(h[mask_h])) / a[mask_h]
+    t = jnp.zeros(h.shape[0])
+    t[~mask_h] = -jnp.inf
+    t[mask_h] = (-b[mask_h] - jnp.sqrt(h[mask_h])) / a[mask_h]
     y = baoa + t * bard
     # body
     mask_body = (h >= 0) & (y > 0) & (y < baba)
     res[mask_body] = t[mask_body]
 
     # caps
-    oc = np.zeros(l1.shape)
+    oc = jnp.zeros(l1.shape)
     oc[y <= 0.0] = oa[y <= 0.0]
     oc[y >= 0.0] = (l1 - cap2)[y >= 0.0]
-    b = np.diag(np.dot(rd, oc.T))
-    c = np.diag(np.dot(oc, oc.T)) - cap_rad * cap_rad
+    b = jnp.diag(jnp.dot(rd, oc.T))
+    c = jnp.diag(jnp.dot(oc, oc.T)) - cap_rad * cap_rad
 
     h2 = b * b - c
     mask_caps = (h >= 0) & (h2 > 0.0) & ~mask_body
 
-    res[mask_caps] = (-b[mask_caps] - np.sqrt(h2[mask_caps]))  # Double indexing to avoid runtime warning with sqrt
+    res[mask_caps] = (-b[mask_caps] - jnp.sqrt(h2[mask_caps]))  # Double indexing to avoid runtime warning with sqrt
 
     # No intersection or behind:
     res[(h <= 0) | (res == 0)] = default
     return res
 
 
-def dist_line_point(po: np.ndarray, l1: np.ndarray, l2: np.ndarray) -> float:
+def dist_line_point(po: jnp.ndarray, l1: jnp.ndarray, l2: jnp.ndarray) -> float:
     """
     Function to calculate the closest distance between a line segment and a point
 
@@ -402,22 +403,22 @@ def dist_line_point(po: np.ndarray, l1: np.ndarray, l2: np.ndarray) -> float:
     :return: shortest distance between line and point
     """
     # normalized tangent vector
-    d = np.divide(l2 - l1, np.linalg.norm(l2 - l1))
+    d = jnp.divide(l2 - l1, jnp.linalg.norm(l2 - l1))
 
     # signed parallel distance components
-    s = np.dot(l1 - po, d)
-    t = np.dot(po - l2, d)
+    s = jnp.dot(l1 - po, d)
+    t = jnp.dot(po - l2, d)
 
     # clamped parallel distance
-    h = np.maximum.reduce([s, t, 0])
+    h = jnp.maximum.reduce([s, t, 0])
 
     # perpendicular distance component
-    c = np.cross(po - l1, d)
+    c = jnp.cross(po - l1, d)
 
-    return np.hypot(h, np.linalg.norm(c))
+    return jnp.hypot(h, jnp.linalg.norm(c))
 
 
-def vec_line_point(po: np.ndarray, l1: np.ndarray, l2: np.ndarray) -> np.ndarray:
+def vec_line_point(po: jnp.ndarray, l1: jnp.ndarray, l2: jnp.ndarray) -> jnp.ndarray:
     """
     This function returns the vector pointing from the line towards the point
 
@@ -426,8 +427,8 @@ def vec_line_point(po: np.ndarray, l1: np.ndarray, l2: np.ndarray) -> np.ndarray
     :param l2: array (3,) for end of line
     :return: array(3,) pointing from line to point
     """
-    d_vec = (l2 - l1) / np.linalg.norm(l2 - l1)  # Unit vector for line
+    d_vec = (l2 - l1) / jnp.linalg.norm(l2 - l1)  # Unit vector for line
     v = po - l1
-    t = np.dot(v, d_vec)  # Projection distance
+    t = jnp.dot(v, d_vec)  # Projection distance
     pro = l1 + t * d_vec  # Projected point on line
     return pro - po

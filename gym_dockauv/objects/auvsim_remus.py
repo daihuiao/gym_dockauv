@@ -126,11 +126,16 @@ class AUVSim_remus(StateSpace, ABC):
             self._state_dot = self.state_dot(0, self.state, nu_c)  # Save the speed here
         else:
             t = time.time()
-            haha = jax.jit(self.remus.remus_solver)
-            self.state, self.u_actual, self._state_dot = haha(jnp.array(self.u), eta=jnp.array(self.state[:6]),
-                                                                                 nu=jnp.array(self.state[6:]),
-                                                                                nu_c=jnp.array(nu_c),
-                                                                                 u_actual=jnp.array(self.u_actual))
+            # haha = jax.jit(self.remus.remus_solver)
+            u = jnp.array(self.u)
+            eta = jnp.array(self.state[:6])
+            nu = jnp.array(self.state[6:])
+            nu_c = jnp.array(nu_c)
+            u_actual = jnp.array(self.u_actual)
+            self.state, self.u_actual, self._state_dot = self.remus.remus_solver(u, eta=eta,
+                                                                                 nu=nu,
+                                                                                nu_c=nu_c,
+                                                                                 u_actual=u_actual)
             print(time.time()-t)
 
             # self.state, self.u_actual, self._state_dot = self.remus.remus_solver(self.u, eta=self.state[:6],

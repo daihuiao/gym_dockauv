@@ -398,7 +398,6 @@ class remus100:
         self.theta_int = 0  # pitch angle integral state
 
     @partial(jax.jit, static_argnums=(0))
-    @classmethod
     def dynamics(cls, eta, nu, u_actual, u_control, sampleTime,nu_c):
         """
         [nu,u_actual] = dynamics(eta,nu,u_actual,u_control,sampleTime) integrates
@@ -670,7 +669,6 @@ class remus100:
         self.simData = np.empty([0, 2 * self.DOF + 2 * self.dimU], float)
 
     @jax.jit
-    @classmethod
     def remus_solver(self, u_control, eta, nu, nu_c, u_actual, N=5, sampleTime=0.02):
         # eta_old = copy.deepcopy(eta)
         for i in range(0, N ):

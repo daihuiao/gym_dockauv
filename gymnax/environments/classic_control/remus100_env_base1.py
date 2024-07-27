@@ -15,8 +15,11 @@ from python_vehicle_simulator.lib.gnc import crossFlowDrag, forceLiftDrag, Hmtrx
 from gym_dockauv.utils import geomutils as geom
 
 
+import time
+
+
 # Class Vehicle
-class remus100:
+class remus100_base1:
     """
     remus100()
         Rudder angle, stern plane and propeller revolution step inputs
@@ -348,6 +351,7 @@ class remus100:
 
     @partial(jax.jit, static_argnums=(0))
     def reset(self):
+        pass
         # self.t = 0  # initial simulation time
         # # Initial state vectors
         # self.eta = jnp.array([0, 0, 0, 0, 0, 0], float)  # position/attitude, user editable
@@ -355,7 +359,7 @@ class remus100:
         # self.u_actual = jnp.array([0, 0, 0], float)  # actual inputs, defined by vehicle class
 
         # Initialization of table used to store the simulation data
-        self.simData = jnp.empty([0, 2 * self.DOF + 2 * self.dimU], float)
+        # self.simData = jnp.empty([0, 2 * self.DOF + 2 * self.dimU], float)
 
     @partial(jax.jit, static_argnums=(0))
     def remus_solver(self, u_control, eta, nu, nu_c, u_actual, N=5, sampleTime=0.02):
@@ -498,7 +502,7 @@ class remus100:
 if __name__ == '__main__':
     
     # Test the Remus100 class
-    remus = remus100()
+    remus = remus100_base1()
     eta = jnp.array([0, 0, 0, 0, 0, 0], dtype=jnp.float32)
     nu = jnp.array([0, 0, 0, 0, 0, 0], dtype=jnp.float32)
     u_actual = jnp.array([0, 0, 0], dtype=jnp.float32)
@@ -508,8 +512,8 @@ if __name__ == '__main__':
 
     for i in range(2):
         print("round",i)
+
         # Test the dynamics function
-        import time
         t = time.time()
         nu, u_actual, nu_dot = remus.dynamics(eta, nu, u_actual, u_control, sampleTime, nu_c)
         print(time.time() - t)
@@ -534,3 +538,8 @@ if __name__ == '__main__':
         u_control = remus.depthHeadingAutopilot(eta, nu, sampleTime)
         print(time.time() - t)
         print(u_control)
+
+        t = time.time()
+        remus.reset()
+        print(time.time() - t)
+        # print(u_control)

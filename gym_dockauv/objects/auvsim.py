@@ -34,7 +34,7 @@ class AUVSim(StateSpace, ABC):
 
     def __init__(self):
         super().__init__()
-        # These values should be overwritten by a config for a run scenario, default here
+        # These values should be overwritten by a config for a run scenario, default herez
         self.state = np.hstack([np.zeros((6,)), np.zeros((6,))])
         self._state_dot = np.hstack([np.zeros((6,)), np.zeros((6,))])
         self.lowpassfilter = LowPassFilter(T1=0.2, sample_time=1)

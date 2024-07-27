@@ -1,6 +1,7 @@
 import copy
 
-import numpy as np
+# import numpy as jnp
+import jax.numpy as jnp
 from functools import cached_property
 from skimage.measure import block_reduce
 from ..utils import geomutils as geom
@@ -26,22 +27,22 @@ class Radar:
     :param max_dist: maximum distance for all rays
 
     :var pos: array (3,) for the starting position of all rays
-    :vartype pos: np.ndarray
+    :vartype pos: jnp.ndarray
     :var rd_b: array (n,3) for the direction of the rays in body frame, where n will be the total number of rays
         (does not change normal over the course of a simulation)
-    :vartype rd_b: np.ndarray
+    :vartype rd_b: jnp.ndarray
     :var rd_n: array (n,3) for the direction of the rays in {n}
-    :vartype rd_n: np.ndarray
+    :vartype rd_n: jnp.ndarray
     :var intersec_dist_fallback: array (n,) for saving the intersection distance for no intersection, the max distance
         will be set
-    :vartype intersec_dist_fallback: np.ndarray
+    :vartype intersec_dist_fallback: jnp.ndarray
     :var end_pos_n: array (n,3) for saving the intersection point in {n}
-    :vartype end_pos_n: np.ndarray
+    :vartype end_pos_n: jnp.ndarray
 
     """
 
-    def __init__(self, eta: np.ndarray, freq: float, alpha: float = 2 * np.pi, beta: float = 2 * np.pi,
-                 ray_per_deg: float = 5.0 * np.pi / 180, max_dist: float = 25, blocksize_reduce: int = 2):
+    def __init__(self, eta: jnp.ndarray, freq: float, alpha: float = 2 * jnp.pi, beta: float = 2 * jnp.pi,
+                 ray_per_deg: float = 5.0 * jnp.pi / 180, max_dist: float = 25, blocksize_reduce: int = 2):
 
         self.pos = eta[0:3]  # Initial starting position for all the rays, is always the same
         self.freq = freq
@@ -53,28 +54,28 @@ class Radar:
         self.alpha_max = alpha/2
         self.beta_max = beta/2
         # Create (n, 1) array for the alpha and beta angle of each array
-        self.alpha = np.arange(-alpha / 2, alpha / 2 + tol, ray_per_deg)
+        self.alpha = jnp.arange(-alpha / 2, alpha / 2 + tol, ray_per_deg)
         self.n_vertical = self.alpha.shape[0]  # Number of rays vertically
-        self.alpha = np.repeat(self.alpha, repeats=(beta + tol) // ray_per_deg + 1, axis=0)
-        self.beta = np.arange(-beta / 2, beta / 2 + tol, ray_per_deg)
+        self.alpha = jnp.repeat(self.alpha, repeats=int((beta + tol) // ray_per_deg + 1), axis=0)
+        self.beta = jnp.arange(-beta / 2, beta / 2 + tol, ray_per_deg)
         self.n_horizontal = self.beta.shape[0]  # Number of rays horizontally
-        self.beta = np.tile(self.beta, (int((alpha + tol) // ray_per_deg + 1),))
+        self.beta = jnp.tile(self.beta, (int((alpha + tol) // ray_per_deg + 1),))
 
         self.n_rays = self.alpha.shape[0]
 
         # Array (n, 3) of rays, where n will be the total number of rays
-        self.rd_b = np.hstack([np.ones(self.n_rays)[:, None],
-                               np.sin(self.beta)[:, None],
-                               np.sin(self.alpha)[:, None]
+        self.rd_b = jnp.hstack([jnp.ones(self.n_rays)[:, None],
+                               jnp.sin(self.beta)[:, None],
+                               jnp.sin(self.alpha)[:, None]
                                ])
         # Normalize these vectors
-        self.rd_b = self.rd_b / np.linalg.norm(self.rd_b, axis=1)[:, None]
+        self.rd_b = self.rd_b / jnp.linalg.norm(self.rd_b, axis=1)[:, None]
 
         # express direction of vectors in body frame in {n}
         self.rd_n = (geom.Rzyx(*eta[3:6]).T.dot(self.rd_b.T)).T
 
         # Initialize intersection distance for each, if no intersect, take max_dist
-        self._intersec_dist_fallback = np.full((self.n_rays,), self.max_dist)
+        self._intersec_dist_fallback = jnp.full((self.n_rays,), self.max_dist)
         self.intersec_dist = copy.deepcopy(self._intersec_dist_fallback)
 
         # Get endpoint of all rays in {n} array(n, 3)
@@ -87,7 +88,7 @@ class Radar:
         self.n_rays_reduced = self.intersec_dist_reduced.shape[0]
 
 
-    def update(self, eta: np.ndarray) -> None:
+    def update(self, eta: jnp.ndarray) -> None:
         """
         Updates all the rays direction in {n} and the actual starting position,
 
@@ -99,9 +100,9 @@ class Radar:
         self.pos = pos
         self.rd_n = (geom.Rzyx(*attitude).dot(self.rd_b.T)).T
         # Normalize these vectors
-        self.rd_n = self.rd_n / np.linalg.norm(self.rd_n, axis=1)[:, None]
+        self.rd_n = self.rd_n / jnp.linalg.norm(self.rd_n, axis=1)[:, None]
 
-    def update_intersec(self, intersec_dist: [None, np.ndarray] = None) -> None:
+    def update_intersec(self, intersec_dist: [None, jnp.ndarray] = None) -> None:
         """
         Update the intersection points and thus the end points of the radar, fallback is used in case None is parsed
 
@@ -126,7 +127,7 @@ class Radar:
 
         :return: array (n,3), where the starting position is copied n times to create artificial array
         """
-        return np.tile(self.pos, (self.n_rays, 1))
+        return jnp.tile(self.pos, (self.n_rays, 1))
 
     @property
     def intersec_dist2d(self):
@@ -134,9 +135,9 @@ class Radar:
 
     @property
     def intersec_dist_reduced(self):
-        return block_reduce(self.intersec_dist2d, block_size=self.blocksize_reduce, func=np.max).flatten()
+        return block_reduce(self.intersec_dist2d, block_size=self.blocksize_reduce, func=jnp.max).flatten()
 
-    def reset(self, eta: np.ndarray):
+    def reset(self, eta: jnp.ndarray):
         """
         Helper function to reset radar
         """
@@ -152,14 +153,14 @@ class Ray:
     DEPRECATED since other sensors are vectorized
     """
 
-    def __init__(self, pos: np.ndarray, rd: np.ndarray, max_dis: float):
+    def __init__(self, pos: jnp.ndarray, rd: jnp.ndarray, max_dis: float):
         self.pos = pos
-        self.rd_b = rd / np.linalg.norm(rd)  # Make it a unit vector, assumed to be given in body frame
+        self.rd_b = rd / jnp.linalg.norm(rd)  # Make it a unit vector, assumed to be given in body frame
         self.rd_n = self.rd_b  # Unit vector in ned frame, needs to be calculated
         self.max_dis = max_dis
         self.intersec_dist = None  # Intersection distance, when available
 
-    def get_point_from_dist(self, dist: float) -> np.ndarray:
+    def get_point_from_dist(self, dist: float) -> jnp.ndarray:
         """
         Function to retrieve a point on the line with giving it a distance in {n}
 

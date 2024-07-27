@@ -1,18 +1,18 @@
-# import numpy as np
-from jax import numpy as np
+# import numpy as jnp
+from jax import numpy as jnp
 import math
 
-def ssa(angle: np.ndarray) -> np.ndarray:
+def ssa(angle: jnp.ndarray) -> jnp.ndarray:
     r"""
     Express input angle between :math:`-\pi` and :math:`+\pi` rad
 
     :param angle: input angle in rad
     :return: angle in rad
     """
-    return (angle + np.pi) % (2 * np.pi) - np.pi
+    return (angle + jnp.pi) % (2 * jnp.pi) - jnp.pi
 
 
-def Rzyx(phi: float, theta: float, psi: float) -> np.ndarray:
+def Rzyx(phi: float, theta: float, psi: float) -> jnp.ndarray:
     r"""
     Rotation matrix from {b} to {n}, to obtain a vector in NED coordinates that is expressed in the body frame,
     a matrix multiplication with the rotation matrix is used. For the reserve way, use the transposed rotation
@@ -38,20 +38,20 @@ def Rzyx(phi: float, theta: float, psi: float) -> np.ndarray:
     # cpsi = math.cos(psi)
     # spsi = math.sin(psi)
 
-    cphi = np.cos(phi)
-    sphi = np.sin(phi)
-    cth = np.cos(theta)
-    sth = np.sin(theta)
-    cpsi = np.cos(psi)
-    spsi = np.sin(psi)
+    cphi = jnp.cos(phi)
+    sphi = jnp.sin(phi)
+    cth = jnp.cos(theta)
+    sth = jnp.sin(theta)
+    cpsi = jnp.cos(psi)
+    spsi = jnp.sin(psi)
 
-    return np.vstack([
-        np.hstack([cpsi * cth, -spsi * cphi + cpsi * sth * sphi, spsi * sphi + cpsi * cphi * sth]),
-        np.hstack([spsi * cth, cpsi * cphi + sphi * sth * spsi, -cpsi * sphi + sth * spsi * cphi]),
-        np.hstack([-sth, cth * sphi, cth * cphi])])
+    return jnp.vstack([
+        jnp.hstack([cpsi * cth, -spsi * cphi + cpsi * sth * sphi, spsi * sphi + cpsi * cphi * sth]),
+        jnp.hstack([spsi * cth, cpsi * cphi + sphi * sth * spsi, -cpsi * sphi + sth * spsi * cphi]),
+        jnp.hstack([-sth, cth * sphi, cth * cphi])])
 
 
-def Tzyx(phi: float, theta: float) -> np.ndarray:
+def Tzyx(phi: float, theta: float) -> jnp.ndarray:
     r"""
     Angular transformation matrix from {b} to {n}. In the formula below abbreviations :math:`s` for sin, :math:`c`
     for cos and :math:`t` for tan are used.
@@ -72,18 +72,18 @@ def Tzyx(phi: float, theta: float) -> np.ndarray:
     :return: array 3x3
     """
 
-    sphi = np.sin(phi)
-    tth = np.tan(theta)
-    cphi = np.cos(phi)
-    cth = np.cos(theta)
+    sphi = jnp.sin(phi)
+    tth = jnp.tan(theta)
+    cphi = jnp.cos(phi)
+    cth = jnp.cos(theta)
 
-    return np.vstack([
-        np.hstack([1, sphi * tth, cphi * tth]),
-        np.hstack([0, cphi, -sphi]),
-        np.hstack([0, sphi / cth, cphi / cth])])
+    return jnp.vstack([
+        jnp.hstack([1, sphi * tth, cphi * tth]),
+        jnp.hstack([0, cphi, -sphi]),
+        jnp.hstack([0, sphi / cth, cphi / cth])])
 
 
-def J(eta: np.ndarray) -> np.ndarray:
+def J(eta: jnp.ndarray) -> jnp.ndarray:
     r"""
     Transformation and rotation matrix combined for obtaining kinematic equation with :math:`\dot{\boldsymbol{\eta}}
     = \boldsymbol{J}_{\Theta}(\boldsymbol{\eta}) \boldsymbol{\nu}` and
@@ -104,14 +104,14 @@ def J(eta: np.ndarray) -> np.ndarray:
 
     R = Rzyx(phi, theta, psi)
     T = Tzyx(phi, theta)
-    zero = np.zeros((3, 3))
+    zero = jnp.zeros((3, 3))
 
-    return np.vstack([
-        np.hstack([R, zero]),
-        np.hstack([zero, T])])
+    return jnp.vstack([
+        jnp.hstack([R, zero]),
+        jnp.hstack([zero, T])])
 
 
-def S_skew(a: np.ndarray) -> np.ndarray:
+def S_skew(a: jnp.ndarray) -> jnp.ndarray:
     r"""
     Returns symmetric skew matrix 3x3, where :math:`\boldsymbol{a} = [a_1, a_2, a_3]^T`:
 
@@ -130,28 +130,28 @@ def S_skew(a: np.ndarray) -> np.ndarray:
     a2 = a[1]
     a3 = a[2]
 
-    return np.vstack([
-        np.hstack([0, -a3, a2]),
-        np.hstack([a3, 0, -a1]),
-        np.hstack([-a2, a1, 0])])
+    return jnp.vstack([
+        jnp.hstack([0, -a3, a2]),
+        jnp.hstack([a3, 0, -a1]),
+        jnp.hstack([-a2, a1, 0])])
 
 
-def _H(r: np.ndarray) -> np.ndarray:
+def _H(r: jnp.ndarray) -> jnp.ndarray:
     r"""
     Helper function to determine center of origin offset to center of gravity
 
     :param r: distance from origin
     :return: array 6x6
     """
-    I3 = np.identity(3)
-    zero = np.zeros((3, 3))
+    I3 = jnp.identity(3)
+    zero = jnp.zeros((3, 3))
 
-    return np.vstack([
-        np.hstack([I3, np.transpose(S_skew(r))]),
-        np.hstack([zero, I3])])
+    return jnp.vstack([
+        jnp.hstack([I3, jnp.transpose(S_skew(r))]),
+        jnp.hstack([zero, I3])])
 
 
-def move_to_CO(A_CG: np.ndarray, r_g: np.ndarray) -> np.ndarray:
+def move_to_CO(A_CG: jnp.ndarray, r_g: jnp.ndarray) -> jnp.ndarray:
     """
     Function for e.g. the rigid body mass matrix to include the offset of the center of origin to the center of gravity
 
@@ -160,6 +160,6 @@ def move_to_CO(A_CG: np.ndarray, r_g: np.ndarray) -> np.ndarray:
     :return: array 6x6
     """
     H = _H(r_g)
-    Ht = np.transpose(H)
+    Ht = jnp.transpose(H)
     A_CO = Ht.dot(A_CG).dot(H)
     return A_CO

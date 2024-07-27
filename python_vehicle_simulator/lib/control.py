@@ -10,7 +10,7 @@ URL: www.fossen.biz/wiley
 Author:     Thor I. Fossen
 """
 
-import numpy as np
+import numpy as jnp
 from python_vehicle_simulator.lib.guidance import refModel3
 from python_vehicle_simulator.lib.gnc import ssa, Rzyx
 
@@ -66,13 +66,13 @@ def DPpolePlacement(
     e[2] = ssa(e[2])
     R = Rzyx(0.0, 0.0, eta3[2])
     tau = (
-        -np.matmul((R.T @ Kp), e)
-        - np.matmul((R.T @ Kd @ R), nu3)
-        - np.matmul((R.T @ Ki), e_int)
+        - jnp.matmul((R.T @ Kp), e)
+        - jnp.matmul((R.T @ Kd @ R), nu3)
+        - jnp.matmul((R.T @ Ki), e_int)
     )
 
     # Low-pass filters, Euler's method
-    T = 5.0 * np.array([1 / wn[0][0], 1 / wn[1][1], 1 / wn[2][2]])
+    T = 5.0 * jnp.array([1 / wn[0][0], 1 / wn[1][1], 1 / wn[2][2]])
     x_d += sampleTime * (eta_ref[0] - x_d) / T[0]
     y_d += sampleTime * (eta_ref[1] - y_d) / T[1]
     psi_d += sampleTime * (eta_ref[2] - psi_d) / T[2]

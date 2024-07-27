@@ -10,8 +10,8 @@ URL: www.fossen.biz/wiley
 Author:     Thor I. Fossen
 """
 
-# import numpy as np
-from jax import numpy as np
+# import numpy as  jnp
+from jax import numpy as  jnp
 import math
 
 #------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ def ssa(angle):
     """
     angle = ssa(angle) returns the smallest-signed angle in [ -pi, pi )
     """
-    angle = (angle + np.pi) % (2 * np.pi) - np.pi
+    angle = (angle +  jnp.pi) % (2 *  jnp.pi) -  jnp.pi
 
     return angle
 
@@ -45,7 +45,7 @@ def Smtrx(a):
     The cross product satisfies: a x b = S(a)b. 
     """
 
-    S = np.array([
+    S =  jnp.array([
         [ 0, -a[2], a[1] ],
         [ a[2],   0,     -a[0] ],
         [-a[1],   a[0],   0 ]  ])
@@ -66,7 +66,7 @@ def Hmtrx(r):
     force satisfy: eta_CO = H(r_bg)' * eta_CG and tau_CO = H(r_bg)' * tau_CG 
     """
 
-    H = np.identity(6,float)
+    H =  jnp.identity(6,float)
     H = H.at[0:3, 3:6].set(Smtrx(r).T)
 
     return H
@@ -81,14 +81,14 @@ def Rzyx(phi,theta,psi):
     2.53
     """
 
-    cphi = np.cos(phi)
-    sphi = np.sin(phi)
-    cth  = np.cos(theta)
-    sth  = np.sin(theta)
-    cpsi = np.cos(psi)
-    spsi = np.sin(psi)
+    cphi =  jnp.cos(phi)
+    sphi =  jnp.sin(phi)
+    cth  =  jnp.cos(theta)
+    sth  =  jnp.sin(theta)
+    cpsi =  jnp.cos(psi)
+    spsi =  jnp.sin(psi)
 
-    R = np.array([
+    R =  jnp.array([
         [ cpsi*cth, -spsi*cphi+cpsi*sth*sphi, spsi*sphi+cpsi*cphi*sth ],
         [ spsi*cth,  cpsi*cphi+sphi*sth*spsi, -cpsi*sphi+sth*spsi*cphi ],
         [ -sth,      cth*sphi,                 cth*cphi ] ])
@@ -103,13 +103,13 @@ def Tzyx(phi,theta):
     transformation matrix T using the zyx convention
     """
 
-    cphi = np.cos(phi)
-    sphi = np.sin(phi)
-    cth  = np.cos(theta)
-    sth  = np.sin(theta)
+    cphi =  jnp.cos(phi)
+    sphi =  jnp.sin(phi)
+    cth  =  jnp.cos(theta)
+    sth  =  jnp.sin(theta)
 
     try:
-        T = np.array([
+        T =  jnp.array([
             [ 1,  sphi*sth/cth,  cphi*sth/cth ],
             [ 0,  cphi,          -sphi],
             [ 0,  sphi/cth,      cphi/cth] ])
@@ -128,8 +128,8 @@ def attitudeEuler(eta,nu,sampleTime):
     2.53
     """
 
-    p_dot   = np.matmul( Rzyx(eta[3], eta[4], eta[5]), nu[0:3] )
-    v_dot   = np.matmul( Tzyx(eta[3], eta[4]), nu[3:6] )
+    p_dot   =  jnp.matmul( Rzyx(eta[3], eta[4], eta[5]), nu[0:3] )
+    v_dot   =  jnp.matmul( Tzyx(eta[3], eta[4]), nu[3:6] )
 
     # Forward Euler integration
     eta = eta.at[0:3].set(eta[0:3] + sampleTime * p_dot)
@@ -169,12 +169,12 @@ def m2c(M, nu):
 
         nu1 = nu[0:3]
         nu2 = nu[3:6]
-        dt_dnu1 = np.matmul(M11,nu1) + np.matmul(M12,nu2)
-        dt_dnu2 = np.matmul(M21,nu1) + np.matmul(M22,nu2)
+        dt_dnu1 =  jnp.matmul(M11,nu1) +  jnp.matmul(M12,nu2)
+        dt_dnu2 =  jnp.matmul(M21,nu1) +  jnp.matmul(M22,nu2)
 
         #C  = [  zeros(3,3)      -Smtrx(dt_dnu1)
         #      -Smtrx(dt_dnu1)  -Smtrx(dt_dnu2) ]
-        C = np.zeros( (6,6) )
+        C =  jnp.zeros( (6,6) )
         C = C.at[0:3,3:6].set(-Smtrx(dt_dnu1))
         C = C.at[3:6,0:3].set(-Smtrx(dt_dnu1))
         C = C.at[3:6,3:6].set(-Smtrx(dt_dnu2))
@@ -183,7 +183,7 @@ def m2c(M, nu):
         #C = [ 0             0            -M(2,2)*nu(2)-M(2,3)*nu(3)
         #      0             0             M(1,1)*nu(1)
         #      M(2,2)*nu(2)+M(2,3)*nu(3)  -M(1,1)*nu(1)          0  ]    
-        C = np.zeros( (3,3) )
+        C =  jnp.zeros( (3,3) )
         C = C.at[0,2].set(-M[1,1] * nu[1] - M[1,2] * nu[2])
         C = C.at[1,2].set(M[0,0] * nu[0])
         C = C.at[2,0].set(-C[0,2])
@@ -202,16 +202,16 @@ def Hoerner(B,T):
     """
 
     # DATA = [B/2T  C_D]
-    DATA1 = np.array([
+    DATA1 =  jnp.array([
         0.0109,0.1766,0.3530,0.4519,0.4728,0.4929,0.4933,0.5585,0.6464,0.8336,
         0.9880,1.3081,1.6392,1.8600,2.3129,2.6000,3.0088,3.4508, 3.7379,4.0031
         ])
-    DATA2 = np.array([
+    DATA2 =  jnp.array([
         1.9661,1.9657,1.8976,1.7872,1.5837,1.2786,1.2108,1.0836,0.9986,0.8796,
         0.8284,0.7599,0.6914,0.6571,0.6307,0.5962,0.5868,0.5859,0.5599,0.5593
         ])
 
-    CY_2D = np.interp( B / (2 * T), DATA1, DATA2 )
+    CY_2D =  jnp.interp( B / (2 * T), DATA1, DATA2 )
 
     return CY_2D
 
@@ -247,7 +247,7 @@ def crossFlowDrag(L,B,T,nu_r):
         Nh = Nh - 0.5 * rho * T * Cd_2D * xL * Ucf * dx    # yaw moment
         xL += dx
 
-    tau_crossflow = np.array([0, Yh, 0, 0, 0, Nh],float)
+    tau_crossflow =  jnp.array([0, Yh, 0, 0, 0, Nh],float)
 
     return tau_crossflow
 
@@ -261,7 +261,7 @@ def forceLiftDrag(b,S,CD_0,alpha,U_r):
     
       M d/dt nu_r + C(nu_r)*nu_r + D*nu_r + g(eta) = tau + tau_liftdrag
     
-    Inputs:
+    I jnputs:
         b:     wing span (m)
         S:     wing area (m^2)
         CD_0:  parasitic drag (alpha = 0), typically 0.1-0.2 for a streamlined body
@@ -311,7 +311,7 @@ def forceLiftDrag(b,S,CD_0,alpha,U_r):
 
         where 0 <= sigma <= 1 is a blending parameter. 
         
-        Inputs:
+        I jnputs:
             b:       wing span (m)
             S:       wing area (m^2)
             CD_0:    parasitic drag (alpha = 0), typically 0.1-0.2 for a 
@@ -347,15 +347,15 @@ def forceLiftDrag(b,S,CD_0,alpha,U_r):
         AR = b**2 / S       # wing aspect ratio
 
         # linear lift
-        CL_alpha = np.pi * AR / ( 1 + np.sqrt(1 + (AR/2)**2) )
+        CL_alpha =  jnp.pi * AR / ( 1 +  jnp.sqrt(1 + (AR/2)**2) )
         CL = CL_alpha * alpha
 
         # parasitic and induced drag
-        CD = CD_0 + CL**2 / (np.pi * e * AR)
+        CD = CD_0 + CL**2 / ( jnp.pi * e * AR)
 
         # nonlinear lift (blending function)
-        CL = (1-sigma) * CL + sigma * 2 * np.sign(alpha) \
-            * np.sin(alpha)**2 * np.cos(alpha)
+        CL = (1-sigma) * CL + sigma * 2 *  jnp.sign(alpha) \
+            *  jnp.sin(alpha)**2 *  jnp.cos(alpha)
 
         return CL, CD
 
@@ -366,10 +366,10 @@ def forceLiftDrag(b,S,CD_0,alpha,U_r):
     F_lift = 1/2 * rho * U_r**2 * S * CL    # lift force 升力
 
     # transform from FLOW axes to BODY axes using angle of attack
-    tau_liftdrag = np.array([
-        np.cos(alpha) * (-F_drag) - np.sin(alpha) * (-F_lift),
+    tau_liftdrag =  jnp.array([
+         jnp.cos(alpha) * (-F_drag) -  jnp.sin(alpha) * (-F_lift),
         0,
-        np.sin(alpha) * (-F_drag) + np.cos(alpha) * (-F_lift),
+         jnp.sin(alpha) * (-F_drag) +  jnp.cos(alpha) * (-F_lift),
         0,
         0,
         0 ])
@@ -383,7 +383,7 @@ def gvect(W,B,theta,phi,r_bg,r_bb):
     g = gvect(W,B,theta,phi,r_bg,r_bb) computes the 6x1 vector of restoring 
     forces about an arbitrarily point CO for a submerged body. 
     
-    Inputs:
+    I jnputs:
         W, B: weight and buoyancy (kg)
         phi,theta: roll and pitch angles (rad)
         r_bg = [x_g y_g z_g]: location of the CG with respect to the CO (m)
@@ -398,12 +398,12 @@ def gvect(W,B,theta,phi,r_bg,r_bb):
         使得物体恢复到平衡位置的力和力矩的线性近似。
     """
 
-    sth  = np.sin(theta)
-    cth  = np.cos(theta)
-    sphi = np.sin(phi)
-    cphi = np.cos(phi)
+    sth  =  jnp.sin(theta)
+    cth  =  jnp.cos(theta)
+    sphi =  jnp.sin(phi)
+    cphi =  jnp.cos(phi)
 
-    g = np.array([
+    g =  jnp.array([
         (W-B) * sth,
         -(W-B) * cth * sphi,
         -(W-B) * cth * cphi,

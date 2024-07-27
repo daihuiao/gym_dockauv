@@ -10,8 +10,9 @@ URL: www.fossen.biz/wiley
 Author:     Thor I. Fossen
 """
 
-import numpy as np
-import math
+# import numpy as np
+# import math
+import jax.numpy as jnp
 
 # [x_d,v_d,a_d] = refModel3(x_d,v_d,a_d,r,wn_d,zeta_d,v_max,sampleTime) is a 3-order 
 # reference  model for generation of a smooth desired position x_d, velocity |v_d| < v_max, 
@@ -27,9 +28,10 @@ def refModel3(x_d, v_d, a_d, r, wn_d, zeta_d, v_max, sampleTime):
     a_d += sampleTime * j_d             # desired acceleration 
     
     # Velocity saturation
-    if (v_d > v_max):
-        v_d = v_max
-    elif (v_d < -v_max): 
-        v_d = -v_max    
-    
+    # if (v_d > v_max):
+    #     v_d = v_max
+    # elif (v_d < -v_max):
+    #     v_d = -v_max
+    v_d = jnp.clip(v_d, -v_max, v_max)
+
     return x_d, v_d, a_d
